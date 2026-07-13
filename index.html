@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#0b1f33" />
-  <meta name="description" content="跨廠區供需變更、瓶頸、承諾與決策管理互動原型" />
+  <meta name="description" content="跨廠區產品、BOM、供應網路、供需變更、瓶頸、承諾與決策管理互動原型" />
   <title>供需承諾控制塔｜互動原型</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
@@ -23,10 +23,11 @@
         <button class="nav-item active" data-view="overview"><span>01</span>總覽控制塔</button>
         <button class="nav-item" data-view="events"><span>02</span>需求變更事件</button>
         <button class="nav-item" data-view="simulation"><span>03</span>有限／無限模擬</button>
-        <button class="nav-item" data-view="bottlenecks"><span>04</span>瓶頸分析</button>
-        <button class="nav-item" data-view="commit"><span>05</span>責任人 Commit</button>
-        <button class="nav-item" data-view="decision"><span>06</span>跨部門決策室</button>
-        <button class="nav-item" data-view="tracking"><span>07</span>執行追蹤與 Highlight</button>
+        <button class="nav-item" data-view="network"><span>04</span>供應網路與 BOM</button>
+        <button class="nav-item" data-view="bottlenecks"><span>05</span>瓶頸分析</button>
+        <button class="nav-item" data-view="commit"><span>06</span>責任人 Commit</button>
+        <button class="nav-item" data-view="decision"><span>07</span>跨部門決策室</button>
+        <button class="nav-item" data-view="tracking"><span>08</span>執行追蹤與 Highlight</button>
       </nav>
 
       <div class="sidebar-footer">
@@ -228,6 +229,79 @@
               <span class="tag danger" id="gapTag"></span>
             </div>
             <div id="gapAnalysis"></div>
+          </article>
+
+          <article class="panel simulation-breakdown-panel">
+            <div class="panel-header stacked-mobile">
+              <div>
+                <p class="eyebrow">MULTI-DIMENSION VIEW</p>
+                <h2>有限／無限結果明細</h2>
+                <p class="muted">以相同需求快照，切換按產品或按客戶檢視供需缺口。</p>
+              </div>
+              <div class="segmented-control" id="simulationDimension">
+                <button class="segment active" data-dimension="product">BY 產品</button>
+                <button class="segment" data-dimension="customer">BY 客戶</button>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table class="simulation-breakdown-table">
+                <thead id="simulationBreakdownHead"></thead>
+                <tbody id="simulationBreakdownBody"></tbody>
+              </table>
+            </div>
+          </article>
+        </section>
+
+        <!-- Supply Network -->
+        <section class="view" id="view-network">
+          <div class="kpi-grid compact-kpis" id="networkKpis"></div>
+
+          <article class="panel network-toolbar-panel">
+            <div class="panel-header stacked-mobile">
+              <div>
+                <p class="eyebrow">MULTI-PLANT SUPPLY NETWORK</p>
+                <h2>供應網路關係與供給檢視</h2>
+                <p class="muted">檢視外購料、友廠模組供應、跨廠調撥與 SMT 代工關係。</p>
+              </div>
+              <div class="network-filters">
+                <label><span>產品類型</span><select id="networkProductSelect"></select></label>
+                <label><span>成品料號</span><select id="networkSkuSelect"></select></label>
+                <label><span>供應關係</span><select id="networkRelationSelect">
+                  <option value="all">全部關係</option>
+                  <option value="external">外部供應商</option>
+                  <option value="module">友廠模組</option>
+                  <option value="smt">友廠 SMT 代工</option>
+                  <option value="transfer">跨廠調撥</option>
+                </select></label>
+              </div>
+            </div>
+          </article>
+
+          <div class="grid network-main-grid">
+            <article class="panel network-map-panel">
+              <div class="panel-header">
+                <div><p class="eyebrow">NETWORK MAP</p><h2>全球供應關係圖</h2></div>
+                <div class="network-legend"><span><i class="external"></i>外部</span><span><i class="module"></i>模組</span><span><i class="smt"></i>SMT</span><span><i class="transfer"></i>調撥</span></div>
+              </div>
+              <div id="supplyNetworkMap" class="supply-network-map"></div>
+            </article>
+
+            <article class="panel bom-panel">
+              <div class="panel-header">
+                <div><p class="eyebrow">BOM EXPLOSION</p><h2>多階 BOM</h2></div>
+                <span class="tag info" id="bomDepthTag">最深 5 階</span>
+              </div>
+              <div id="bomSummary" class="bom-summary"></div>
+              <div id="bomTree" class="bom-tree"></div>
+            </article>
+          </div>
+
+          <article class="panel">
+            <div class="panel-header stacked-mobile">
+              <div><p class="eyebrow">SUPPLY RELATIONSHIP</p><h2>供應關係與可供量</h2></div>
+              <span class="tag neutral" id="networkRelationCount"></span>
+            </div>
+            <div class="table-wrap"><table><thead><tr><th>來源</th><th>關係</th><th>供應項目</th><th>目的工廠</th><th>週需求</th><th>可供量</th><th>覆蓋率</th><th>前置時間</th><th>狀態</th></tr></thead><tbody id="networkRelationTable"></tbody></table></div>
           </article>
         </section>
 
