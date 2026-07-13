@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Supply Commitment Control Tower</title>
+<style>
+:root{
+  --bg:#f3f6fb;
+  --panel:#ffffff;
+  --ink:#172033;
+  --muted:#6d778b;
+  --line:#dde3ee;
+  --brand:#2557d6;
+  --brand2:#0f3f9f;
+  --ok:#12805c;
+  --warn:#d57a00;
+  --bad:#c93c3c;
+  --soft:#eef3ff;
+  --shadow:0 10px 30px rgba(25,40,75,.08);
+}
+*{box-sizing:border-box}
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--ink);
+  font-family:"Segoe UI","Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;
+}
+button,input,select{font:inherit}
+button{cursor:pointer}
+button,input,select{min-height:44px}
+img,svg{max-width:100%;height:auto}
+.app{min-height:100vh}
+.mobile-menu-btn{display:none;border:1px solid rgba(255,255,255,.18);background:transparent;color:#fff;width:44px;height:44px;border-radius:10px;font-size:20px}
+.sidebar-backdrop{display:none;position:fixed;inset:68px 0 0;background:rgba(10,18,34,.45);z-index:29}
+.topbar{
+  height:68px;background:#101b31;color:#fff;display:flex;align-items:center;
+  justify-content:space-between;padding:0 26px;position:sticky;top:0;z-index:20;
+  box-shadow:0 3px 16px rgba(0,0,0,.18)
+}
+.brand{display:flex;align-items:center;gap:12px}
+.logo{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,#5c8aff,#1d45b9);display:grid;place-items:center;font-weight:800}
+.brand-title{font-weight:750;letter-spacing:.2px}
+.brand-sub{font-size:12px;color:#aebbd4;margin-top:2px}
+.top-actions{display:flex;align-items:center;gap:10px}
+.pill{border:1px solid rgba(255,255,255,.18);padding:8px 12px;border-radius:999px;font-size:13px;color:#d9e2f5}
+.primary{
+  border:0;background:var(--brand);color:#fff;padding:10px 16px;border-radius:9px;font-weight:700;
+  box-shadow:0 5px 12px rgba(37,87,214,.22)
+}
+.primary:hover{background:var(--brand2)}
+.ghost{border:1px solid var(--line);background:#fff;color:var(--ink);padding:9px 13px;border-radius:9px;font-weight:650}
+.ghost:hover{background:#f7f9fd}
+.layout{display:grid;grid-template-columns:230px 1fr;min-height:calc(100vh - 68px)}
+.sidebar{
+  background:#fff;border-right:1px solid var(--line);padding:18px 12px;position:sticky;top:68px;height:calc(100vh - 68px)
+}
+.nav-label{font-size:11px;color:#9aa3b4;font-weight:800;text-transform:uppercase;letter-spacing:.12em;padding:12px 12px 7px}
+.nav-item{
+  display:flex;gap:11px;align-items:center;padding:11px 12px;margin:3px 0;border-radius:9px;color:#4c566a;font-weight:650;
+}
+.nav-item.active{background:var(--soft);color:var(--brand)}
+.nav-item:hover{background:#f5f7fb}
+.nav-ico{width:24px;text-align:center}
+.content{padding:24px;max-width:1650px;width:100%;margin:auto}
+.page-head{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:18px}
+h1{font-size:25px;margin:0 0 6px}
+.subtitle{color:var(--muted);font-size:14px}
+.grid-kpi{display:grid;grid-template-columns:repeat(5,minmax(150px,1fr));gap:14px;margin-bottom:18px}
+.card{
+  background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow)
+}
+.kpi{padding:17px}
+.kpi-label{font-size:12px;color:var(--muted);font-weight:700}
+.kpi-value{font-size:29px;font-weight:800;margin:9px 0 4px}
+.kpi-foot{font-size:12px;color:var(--muted)}
+.kpi .up{color:var(--bad);font-weight:700}
+.kpi .down{color:var(--ok);font-weight:700}
+.main-grid{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(340px,.8fr);gap:16px}
+.section{padding:18px}
+.section-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.section-title{font-size:16px;font-weight:800}
+.section-note{font-size:12px;color:var(--muted)}
+.tabs{display:flex;background:#edf1f7;padding:4px;border-radius:9px}
+.tab{border:0;background:transparent;padding:8px 12px;border-radius:7px;color:#627089;font-weight:700}
+.tab.active{background:#fff;color:var(--brand);box-shadow:0 2px 8px rgba(22,45,90,.08)}
+.scenario-row{
+  display:grid;grid-template-columns:1.2fr .8fr .8fr .8fr .8fr;gap:10px;align-items:center;
+  padding:12px 10px;border-top:1px solid var(--line)
+}
+.scenario-row.header{background:#f8fafd;border-radius:9px 9px 0 0;border-top:0;color:#68758b;font-size:12px;font-weight:800}
+.scenario-name{font-weight:750}
+.small{font-size:12px;color:var(--muted)}
+.bar-wrap{height:9px;background:#edf1f7;border-radius:999px;overflow:hidden;margin-top:6px}
+.bar{height:100%;border-radius:999px;background:var(--brand)}
+.bar.warn{background:var(--warn)}
+.bar.bad{background:var(--bad)}
+.badge{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:5px 9px;font-size:12px;font-weight:800}
+.badge.ok{background:#e9f7f2;color:var(--ok)}
+.badge.warn{background:#fff3de;color:var(--warn)}
+.badge.bad{background:#fdebea;color:var(--bad)}
+.badge.info{background:#ebf1ff;color:var(--brand)}
+.compare{
+  margin-top:14px;padding:14px;border-radius:12px;background:linear-gradient(135deg,#f7f9ff,#eef3ff);border:1px solid #dbe4ff
+}
+.compare-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.compare-box{background:#fff;padding:12px;border-radius:10px;border:1px solid #dfe6f5}
+.compare-title{font-weight:800;margin-bottom:8px}
+.metric-line{display:flex;justify-content:space-between;padding:5px 0;font-size:13px}
+.metric-line strong{font-size:14px}
+.list{display:flex;flex-direction:column;gap:10px}
+.issue{
+  border:1px solid var(--line);border-radius:12px;padding:13px;background:#fff;transition:.2s
+}
+.issue:hover{transform:translateY(-1px);box-shadow:0 7px 18px rgba(24,44,82,.08)}
+.issue-top{display:flex;justify-content:space-between;gap:10px}
+.issue-title{font-weight:800}
+.issue-meta{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
+.owner{display:flex;align-items:center;gap:8px;font-size:13px}
+.avatar{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:#e9eef8;color:#334666;font-weight:800;font-size:12px}
+.issue-actions{display:flex;gap:8px;margin-top:10px}
+.issue-actions button{padding:7px 10px;border-radius:8px;font-size:12px}
+.danger-outline{border:1px solid #efb8b8;background:#fff7f7;color:var(--bad);font-weight:750}
+.timeline{position:relative;padding-left:24px}
+.timeline:before{content:"";position:absolute;left:8px;top:8px;bottom:8px;width:2px;background:#dfe5ef}
+.t-item{position:relative;padding:0 0 18px}
+.t-item:before{content:"";position:absolute;left:-21px;top:5px;width:10px;height:10px;border-radius:50%;background:var(--brand);border:3px solid #eef3ff}
+.t-time{font-size:11px;color:#99a3b3}
+.t-text{font-size:13px;margin-top:3px;line-height:1.45}
+.action-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.action{
+  border:1px solid var(--line);background:#fff;border-radius:11px;padding:13px;text-align:left
+}
+.action:hover{border-color:#b8c8f3;background:#fafcff}
+.action strong{display:block;margin-bottom:4px}
+.action span{font-size:12px;color:var(--muted)}
+.panel-hidden{display:none}
+.modal-mask{
+  position:fixed;inset:0;background:rgba(10,18,34,.5);display:none;align-items:center;justify-content:center;z-index:50;padding:20px
+}
+.modal{
+  width:min(520px,100%);background:#fff;border-radius:16px;box-shadow:0 24px 80px rgba(0,0,0,.25);padding:22px
+}
+.modal h3{margin:0 0 6px}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:18px 0}
+.field label{display:block;font-size:12px;color:var(--muted);font-weight:750;margin-bottom:6px}
+.field input,.field select{
+  width:100%;border:1px solid var(--line);border-radius:9px;padding:10px 11px;background:#fff
+}
+.field.full{grid-column:1/-1}
+.modal-actions{display:flex;justify-content:flex-end;gap:9px}
+.toast{
+  position:fixed;right:24px;bottom:24px;background:#15233e;color:#fff;border-radius:10px;padding:12px 16px;
+  box-shadow:0 12px 30px rgba(0,0,0,.25);display:none;z-index:70;font-size:13px
+}
+.control-strip{display:flex;gap:8px;flex-wrap:wrap}
+.control-strip select,.control-strip input{
+  border:1px solid var(--line);background:#fff;border-radius:9px;padding:8px 10px
+}
+.risk-meter{display:flex;height:12px;border-radius:999px;overflow:hidden;background:#edf1f7;margin:10px 0}
+.risk-meter div:nth-child(1){background:var(--ok)}
+.risk-meter div:nth-child(2){background:var(--warn)}
+.risk-meter div:nth-child(3){background:var(--bad)}
+.table-scroll{overflow:auto;-webkit-overflow-scrolling:touch}
+@media(max-width:1200px){
+  .grid-kpi{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .main-grid{grid-template-columns:1fr}
+}
+@media(max-width:900px){
+  .layout{grid-template-columns:1fr}
+  .mobile-menu-btn{display:grid;place-items:center}
+  .sidebar{
+    position:fixed;left:0;top:68px;bottom:0;width:min(290px,82vw);height:auto;z-index:30;
+    transform:translateX(-105%);transition:transform .24s ease;box-shadow:12px 0 30px rgba(0,0,0,.18)
+  }
+  .sidebar.open{transform:translateX(0)}
+  .sidebar-backdrop.show{display:block}
+  .content{padding:18px}
+  .page-head{gap:14px;flex-direction:column}
+  .control-strip{width:100%}
+  .control-strip select{flex:1;min-width:160px}
+  .grid-kpi{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .section-head{align-items:flex-start;gap:12px;flex-direction:column}
+  .tabs{width:100%;overflow:auto}
+  .tab{flex:1;white-space:nowrap}
+}
+@media(max-width:640px){
+  body{font-size:15px}
+  .topbar{height:64px;padding:0 12px;gap:10px}
+  .layout{min-height:calc(100vh - 64px)}
+  .sidebar{top:64px}
+  .sidebar-backdrop{inset:64px 0 0}
+  .brand{min-width:0;flex:1}
+  .logo{width:32px;height:32px;flex:0 0 auto}
+  .brand-title{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .brand-sub{display:none}
+  .top-actions{gap:7px}
+  .top-actions .primary{padding:9px 11px;font-size:12px;white-space:nowrap}
+  .pill{display:none}
+  .content{padding:12px}
+  h1{font-size:21px}
+  .subtitle{font-size:13px;line-height:1.5}
+  .grid-kpi{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;gap:10px;padding-bottom:4px}
+  .kpi{min-width:78vw;scroll-snap-align:start;padding:15px}
+  .kpi-value{font-size:27px}
+  .section{padding:14px}
+  .card{border-radius:12px}
+  .scenario-row.header{display:none}
+  .scenario-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;min-width:0;padding:14px 0}
+  .scenario-row > div:first-child{grid-column:1/-1;padding-bottom:2px}
+  .scenario-cell{background:#f8fafd;border-radius:9px;padding:9px}
+  .scenario-cell:before{content:attr(data-label);display:block;font-size:10px;color:#8b95a7;font-weight:800;margin-bottom:4px}
+  .compare-grid{grid-template-columns:1fr}
+  .action-grid{grid-template-columns:1fr}
+  .issue-top{flex-direction:column}
+  .issue-actions{display:grid;grid-template-columns:1fr 1fr}
+  .issue-actions button{min-height:42px}
+  .form-grid{grid-template-columns:1fr}
+  .field.full{grid-column:auto}
+  .modal-mask{align-items:flex-end;padding:0}
+  .modal{width:100%;max-height:92vh;overflow:auto;border-radius:18px 18px 0 0;padding:18px}
+  .modal-actions{position:sticky;bottom:-18px;background:#fff;padding:12px 0 18px}
+  .modal-actions button{flex:1}
+  .toast{left:12px;right:12px;bottom:12px;text-align:center}
+  .metric-line{gap:12px}
+  .metric-line strong{text-align:right}
+}
+@media(max-width:390px){
+  .top-actions .primary{font-size:0;width:44px;padding:0}
+  .top-actions .primary:after{content:'▶';font-size:15px}
+  .grid-kpi{grid-template-columns:1fr}
+  .control-strip{display:grid;grid-template-columns:1fr}
+  .control-strip select{width:100%}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <button class="mobile-menu-btn" aria-label="開啟導覽選單" onclick="toggleSidebar()">☰</button>
+    <div class="brand">
+      <div class="logo">SC</div>
+      <div>
+        <div class="brand-title">Supply Commitment Control Tower</div>
+        <div class="brand-sub">需求變動 × 瓶頸治理 × 責任承諾</div>
+      </div>
+    </div>
+    <div class="top-actions">
+      <span class="pill">資料更新：剛剛</span>
+      <button class="primary" onclick="runSimulation()">執行情境模擬</button>
+    </div>
+  </header>
+
+  <div class="layout">
+    <div class="sidebar-backdrop" id="sidebarBackdrop" onclick="closeSidebar()"></div>
+    <aside class="sidebar" id="sidebar">
+      <div class="nav-label">Management</div>
+      <div class="nav-item active" onclick="switchView('overview',this);closeSidebar()"><span class="nav-ico">◫</span>總覽儀表板</div>
+      <div class="nav-item" onclick="switchView('bottleneck',this);closeSidebar()"><span class="nav-ico">⚠</span>瓶頸治理</div>
+      <div class="nav-item" onclick="switchView('change',this);closeSidebar()"><span class="nav-ico">↻</span>需求變動</div>
+      <div class="nav-item" onclick="switchView('commit',this);closeSidebar()"><span class="nav-ico">✓</span>Commit 管理</div>
+      <div class="nav-label">Analysis</div>
+      <div class="nav-item" onclick="showToast('此原型已將比較分析整合在總覽頁。');closeSidebar()"><span class="nav-ico">▥</span>有限／無限比較</div>
+      <div class="nav-item" onclick="showToast('稽核軌跡已展示於右側活動紀錄。');closeSidebar()"><span class="nav-ico">≡</span>決策稽核軌跡</div>
+    </aside>
+
+    <main class="content">
+      <div class="page-head">
+        <div>
+          <h1 id="pageTitle">供應承諾總覽</h1>
+          <div class="subtitle" id="pageSubtitle">把需求變動、資源限制、瓶頸責任與管理升級放在同一個決策畫面。</div>
+        </div>
+        <div class="control-strip">
+          <select id="plant" onchange="refreshScenario()">
+            <option>台灣一廠</option>
+            <option>台灣二廠</option>
+            <option>越南廠</option>
+          </select>
+          <select id="horizon" onchange="refreshScenario()">
+            <option value="4">未來 4 週</option>
+            <option value="8">未來 8 週</option>
+            <option value="12">未來 12 週</option>
+          </select>
+        </div>
+      </div>
+
+      <section id="overview" class="view-panel">
+        <div class="grid-kpi">
+          <div class="card kpi"><div class="kpi-label">本期需求量</div><div class="kpi-value" id="kpiDemand">12,480</div><div class="kpi-foot"><span class="up">+8.6%</span> 相較上版</div></div>
+          <div class="card kpi"><div class="kpi-label">可承諾供應</div><div class="kpi-value" id="kpiSupply">10,920</div><div class="kpi-foot">承諾率 <strong id="promiseRate">87.5%</strong></div></div>
+          <div class="card kpi"><div class="kpi-label">重大瓶頸</div><div class="kpi-value" id="kpiBottleneck">4</div><div class="kpi-foot"><span class="up">2 項</span> 尚未完成承諾</div></div>
+          <div class="card kpi"><div class="kpi-label">需求變動率</div><div class="kpi-value" id="kpiVolatility">18.4%</div><div class="kpi-foot">高於管控門檻 15%</div></div>
+          <div class="card kpi"><div class="kpi-label">逾期 Commit</div><div class="kpi-value" id="kpiOverdue">2</div><div class="kpi-foot"><span class="up">需管理升級</span></div></div>
+        </div>
+
+        <div class="main-grid">
+          <div>
+            <div class="card section">
+              <div class="section-head">
+                <div>
+                  <div class="section-title">有限／無限產能情境比較</div>
+                  <div class="section-note">無限模式找理論需求缺口；有限模式找實際承諾與瓶頸位置。</div>
+                </div>
+                <div class="tabs">
+                  <button class="tab active" id="tabBoth" onclick="setMode('both')">雙軌比較</button>
+                  <button class="tab" id="tabFinite" onclick="setMode('finite')">有限</button>
+                  <button class="tab" id="tabInfinite" onclick="setMode('infinite')">無限</button>
+                </div>
+              </div>
+
+              <div class="table-scroll">
+                <div class="scenario-row header">
+                  <div>資源／供應環節</div><div>需求負荷</div><div>有限結果</div><div>無限結果</div><div>判定</div>
+                </div>
+                <div id="scenarioTable"></div>
+              </div>
+
+              <div class="compare">
+                <div class="compare-grid">
+                  <div class="compare-box" id="finiteBox">
+                    <div class="compare-title">有限產能方案</div>
+                    <div class="metric-line"><span>可出貨量</span><strong id="finiteQty">10,920</strong></div>
+                    <div class="metric-line"><span>達交率</span><strong id="finiteOtd">87.5%</strong></div>
+                    <div class="metric-line"><span>主要限制</span><strong>SMT / 包材</strong></div>
+                  </div>
+                  <div class="compare-box" id="infiniteBox">
+                    <div class="compare-title">無限產能方案</div>
+                    <div class="metric-line"><span>理論出貨量</span><strong id="infiniteQty">12,480</strong></div>
+                    <div class="metric-line"><span>理論達交率</span><strong>100%</strong></div>
+                    <div class="metric-line"><span>需新增能力</span><strong id="extraCap">+14.3%</strong></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card section" style="margin-top:16px">
+              <div class="section-head">
+                <div>
+                  <div class="section-title">管理動作</div>
+                  <div class="section-note">系統不只顯示問題，還要把問題推進到可追蹤的決策。</div>
+                </div>
+              </div>
+              <div class="action-grid">
+                <button class="action" onclick="openChangeModal()"><strong>新增需求變更</strong><span>模擬客戶插單、Forecast 上修或交期提前</span></button>
+                <button class="action" onclick="openCommitModal('SMT 產能不足','王志明')"><strong>建立瓶頸 Commit</strong><span>指定負責人、承諾日期與改善動作</span></button>
+                <button class="action" onclick="escalateAll()"><strong>管理升級</strong><span>將逾期或未回覆項目標記為 Highlight</span></button>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <div class="card section">
+              <div class="section-head">
+                <div>
+                  <div class="section-title">優先處理瓶頸</div>
+                  <div class="section-note">依缺口、到期日與需求風險排序</div>
+                </div>
+                <span class="badge bad">4 項</span>
+              </div>
+              <div class="list" id="issueList"></div>
+            </div>
+
+            <div class="card section" style="margin-top:16px">
+              <div class="section-head">
+                <div class="section-title">決策與異動紀錄</div>
+                <button class="ghost" onclick="clearTimeline()">清除</button>
+              </div>
+              <div class="timeline" id="timeline"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="bottleneck" class="view-panel panel-hidden">
+        <div class="card section">
+          <div class="section-head">
+            <div>
+              <div class="section-title">瓶頸治理工作台</div>
+              <div class="section-note">瓶頸不是單純「誰沒做好」，而是要先區分需求波動、資源限制與決策等待。</div>
+            </div>
+            <button class="primary" onclick="openCommitModal('新瓶頸','未指派')">新增 Commit</button>
+          </div>
+          <div class="risk-meter"><div style="width:32%"></div><div style="width:28%"></div><div style="width:40%"></div></div>
+          <div class="small" style="margin-bottom:14px">風險結構：可控 32%｜需跨部門協調 28%｜外部需求變動 40%</div>
+          <div class="list" id="bottleneckFull"></div>
+        </div>
+      </section>
+
+      <section id="change" class="view-panel panel-hidden">
+        <div class="card section">
+          <div class="section-head">
+            <div>
+              <div class="section-title">需求變動模擬器</div>
+              <div class="section-note">改變需求後，系統會重新計算承諾率、瓶頸與需要新增的能力。</div>
+            </div>
+          </div>
+          <div class="form-grid">
+            <div class="field"><label>需求增減幅</label><input id="changePct" type="range" min="-20" max="40" value="10" oninput="previewChange()"></div>
+            <div class="field"><label>目前設定</label><input id="changePctText" value="+10%" readonly></div>
+            <div class="field"><label>變動類型</label>
+              <select id="changeType"><option>客戶 Forecast 上修</option><option>急單插單</option><option>交期提前</option><option>產品組合改變</option></select>
+            </div>
+            <div class="field"><label>影響範圍</label>
+              <select id="changeScope"><option>全部產品</option><option>Model-A 系列</option><option>Model-B 系列</option><option>指定客戶</option></select>
+            </div>
+          </div>
+          <button class="primary" onclick="applyDemandChange()">套用並重新模擬</button>
+          <div id="changeResult" class="compare" style="margin-top:18px">
+            調整滑桿後按下「套用並重新模擬」，查看對供應承諾與瓶頸的影響。
+          </div>
+        </div>
+      </section>
+
+      <section id="commit" class="view-panel panel-hidden">
+        <div class="card section">
+          <div class="section-head">
+            <div>
+              <div class="section-title">Commit 管理</div>
+              <div class="section-note">把問題、承諾、期限、證據與升級條件綁在同一張卡片。</div>
+            </div>
+          </div>
+          <div id="commitBoard" class="list"></div>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+
+<div class="modal-mask" id="commitModal">
+  <div class="modal">
+    <h3>建立瓶頸 Commit</h3>
+    <div class="small">承諾應包含具體交付、時間點與失敗時的升級方式。</div>
+    <div class="form-grid">
+      <div class="field full"><label>瓶頸議題</label><input id="commitIssue"></div>
+      <div class="field"><label>負責人</label><input id="commitOwner"></div>
+      <div class="field"><label>承諾日期</label><input id="commitDate" type="date"></div>
+      <div class="field full"><label>改善動作</label><input id="commitAction" value="提出可驗證的改善方案並回覆新增供應能力"></div>
+      <div class="field"><label>升級條件</label>
+        <select id="commitEscalation"><option>到期未完成即 Highlight</option><option>缺口未下降 20% 即升級</option><option>連續兩版未改善即升級</option></select>
+      </div>
+      <div class="field"><label>狀態</label><select id="commitStatus"><option>待承諾</option><option>執行中</option><option>已承諾</option></select></div>
+    </div>
+    <div class="modal-actions">
+      <button class="ghost" onclick="closeModal('commitModal')">取消</button>
+      <button class="primary" onclick="saveCommit()">儲存 Commit</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-mask" id="changeModal">
+  <div class="modal">
+    <h3>新增需求變更</h3>
+    <div class="form-grid">
+      <div class="field"><label>變更幅度</label><input id="quickChangePct" type="number" value="15"></div>
+      <div class="field"><label>需求版本</label><input id="demandVersion" value="DMD-V08"></div>
+      <div class="field full"><label>變更原因</label><input id="changeReason" value="客戶臨時上修 Forecast"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="ghost" onclick="closeModal('changeModal')">取消</button>
+      <button class="primary" onclick="quickApplyChange()">套用變更</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let demand = 12480;
+let supply = 10920;
+let mode = 'both';
+let issues = [
+  {id:1,title:'SMT 產能不足',gap:820,owner:'王志明',due:'2026-07-15',status:'執行中',risk:'bad',cause:'有限產能限制'},
+  {id:2,title:'包材供應商交期延後',gap:410,owner:'林雅婷',due:'2026-07-14',status:'待承諾',risk:'bad',cause:'外部供應風險'},
+  {id:3,title:'Model-B 需求連續上修',gap:230,owner:'陳冠宇',due:'2026-07-17',status:'需確認',risk:'warn',cause:'外部需求變動'},
+  {id:4,title:'測試站換線時間過長',gap:100,owner:'黃怡君',due:'2026-07-18',status:'已承諾',risk:'warn',cause:'內部效率問題'}
+];
+let timeline = [
+  {time:'15:48',text:'系統偵測 DMD-V07 相較前版上修 8.6%，重新執行有限／無限產能比較。'},
+  {time:'15:36',text:'SMT 瓶頸已由王志明承諾於 7/15 前提出加班與委外方案。'},
+  {time:'15:18',text:'包材供應商回覆交期延後 2 天，影響 Model-A 410 台。'}
+];
+const resources = [
+  {name:'SMT 線',load:116,finite:84,infinite:100,status:'bad'},
+  {name:'組裝線',load:92,finite:92,infinite:100,status:'ok'},
+  {name:'測試站',load:103,finite:96,infinite:100,status:'warn'},
+  {name:'包材供應',load:108,finite:88,infinite:100,status:'bad'},
+  {name:'關鍵 IC',load:97,finite:97,infinite:100,status:'ok'}
+];
+
+function toggleSidebar(){
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('sidebarBackdrop').classList.toggle('show');
+}
+function closeSidebar(){
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sidebarBackdrop').classList.remove('show');
+}
+window.addEventListener('resize',()=>{if(window.innerWidth>900)closeSidebar()});
+function fmt(n){return Math.round(n).toLocaleString('zh-TW')}
+function statusBadge(status,risk){
+  let cls = risk==='bad'?'bad':risk==='warn'?'warn':'ok';
+  return `<span class="badge ${cls}">${status}</span>`;
+}
+function renderScenario(){
+  const wrap=document.getElementById('scenarioTable');
+  wrap.innerHTML=resources.map(r=>{
+    const finite = Math.max(55, Math.round(r.finite * (12480/demand)));
+    let judgment = r.status==='bad'?'重大瓶頸':r.status==='warn'?'需改善':'可支應';
+    return `<div class="scenario-row">
+      <div><div class="scenario-name">${r.name}</div><div class="small">負荷 ${r.load}%</div></div>
+      <div class="scenario-cell" data-label="需求負荷"><strong>${r.load}%</strong><div class="bar-wrap"><div class="bar ${r.status}" style="width:${Math.min(r.load,130)/1.3}%"></div></div></div>
+      <div class="scenario-cell ${mode==='infinite'?'small':''}" data-label="有限結果"><strong>${finite}%</strong></div>
+      <div class="scenario-cell ${mode==='finite'?'small':''}" data-label="無限結果"><strong>100%</strong></div>
+      <div class="scenario-cell" data-label="判定">${statusBadge(judgment,r.status)}</div>
+    </div>`
+  }).join('');
+}
+function renderIssues(){
+  const html=issues.map(i=>`<div class="issue">
+    <div class="issue-top"><div><div class="issue-title">${i.title}</div><div class="small">${i.cause}</div></div>${statusBadge(i.status,i.risk)}</div>
+    <div class="issue-meta"><span class="badge info">缺口 ${fmt(i.gap)}</span><span class="badge ${i.risk}">到期 ${i.due.slice(5)}</span></div>
+    <div class="owner"><span class="avatar">${i.owner[0]}</span>${i.owner}</div>
+    <div class="issue-actions">
+      <button class="ghost" onclick="openCommitModal('${i.title}','${i.owner}')">更新承諾</button>
+      <button class="danger-outline" onclick="highlightIssue(${i.id})">Highlight</button>
+    </div>
+  </div>`).join('');
+  document.getElementById('issueList').innerHTML=html;
+  document.getElementById('bottleneckFull').innerHTML=html;
+  document.getElementById('commitBoard').innerHTML=issues.map(i=>`<div class="issue">
+    <div class="issue-top"><div><div class="issue-title">${i.title}</div><div class="small">負責人：${i.owner}｜到期：${i.due}</div></div>${statusBadge(i.status,i.risk)}</div>
+    <div class="metric-line"><span>承諾內容</span><strong>${i.status==='待承諾'?'尚未提交':'改善缺口並回覆可供應量'}</strong></div>
+    <div class="metric-line"><span>升級條件</span><strong>到期未完成即 Highlight</strong></div>
+  </div>`).join('');
+}
+function renderTimeline(){
+  document.getElementById('timeline').innerHTML=timeline.map(t=>`<div class="t-item"><div class="t-time">${t.time}</div><div class="t-text">${t.text}</div></div>`).join('');
+}
+function updateKPIs(){
+  const rate=supply/demand*100;
+  document.getElementById('kpiDemand').textContent=fmt(demand);
+  document.getElementById('kpiSupply').textContent=fmt(supply);
+  document.getElementById('promiseRate').textContent=rate.toFixed(1)+'%';
+  document.getElementById('finiteQty').textContent=fmt(supply);
+  document.getElementById('finiteOtd').textContent=rate.toFixed(1)+'%';
+  document.getElementById('infiniteQty').textContent=fmt(demand);
+  document.getElementById('extraCap').textContent='+'+Math.max(0,((demand/supply-1)*100)).toFixed(1)+'%';
+  document.getElementById('kpiBottleneck').textContent=issues.filter(i=>i.risk!=='ok').length;
+  document.getElementById('kpiOverdue').textContent=issues.filter(i=>i.status==='待承諾'||i.status==='需確認').length;
+}
+function setMode(m){
+  mode=m;
+  ['Both','Finite','Infinite'].forEach(x=>document.getElementById('tab'+x).classList.remove('active'));
+  document.getElementById('tab'+m.charAt(0).toUpperCase()+m.slice(1)).classList.add('active');
+  document.getElementById('finiteBox').style.opacity=m==='infinite'?'.35':'1';
+  document.getElementById('infiniteBox').style.opacity=m==='finite'?'.35':'1';
+  renderScenario();
+}
+function runSimulation(){
+  supply=Math.round(Math.min(demand,10920+(Math.random()*550-120)));
+  timeline.unshift({time:new Date().toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'}),text:`完成新一輪模擬：有限產能可承諾 ${fmt(supply)}，需求缺口 ${fmt(Math.max(0,demand-supply))}。`});
+  updateKPIs();renderScenario();renderTimeline();showToast('情境模擬完成，供應承諾與瓶頸已更新。');
+}
+function switchView(id,el){
+  document.querySelectorAll('.view-panel').forEach(v=>v.classList.add('panel-hidden'));
+  document.getElementById(id).classList.remove('panel-hidden');
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  if(el)el.classList.add('active');
+  const titles={
+    overview:['供應承諾總覽','把需求變動、資源限制、瓶頸責任與管理升級放在同一個決策畫面。'],
+    bottleneck:['瓶頸治理','先辨識瓶頸成因，再要求對應角色提出可驗證承諾。'],
+    change:['需求變動','把外部變動視為風險來源，而不是直接歸咎執行人員。'],
+    commit:['Commit 管理','所有承諾都必須有負責人、日期、交付與升級條件。']
+  };
+  document.getElementById('pageTitle').textContent=titles[id][0];
+  document.getElementById('pageSubtitle').textContent=titles[id][1];
+}
+function openCommitModal(title,owner){
+  document.getElementById('commitIssue').value=title;
+  document.getElementById('commitOwner').value=owner;
+  document.getElementById('commitDate').value='2026-07-17';
+  document.getElementById('commitModal').style.display='flex';
+}
+function openChangeModal(){document.getElementById('changeModal').style.display='flex'}
+function closeModal(id){document.getElementById(id).style.display='none'}
+function saveCommit(){
+  const title=document.getElementById('commitIssue').value||'未命名瓶頸';
+  const owner=document.getElementById('commitOwner').value||'未指派';
+  const due=document.getElementById('commitDate').value||'2026-07-20';
+  const status=document.getElementById('commitStatus').value;
+  const existing=issues.find(i=>i.title===title);
+  if(existing){existing.owner=owner;existing.due=due;existing.status=status;existing.risk=status==='已承諾'?'warn':'bad'}
+  else issues.unshift({id:Date.now(),title,gap:150,owner,due,status,risk:'warn',cause:'待分類'});
+  timeline.unshift({time:new Date().toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'}),text:`${owner} 已針對「${title}」提交 Commit，期限 ${due}。`});
+  renderIssues();renderTimeline();updateKPIs();closeModal('commitModal');showToast('Commit 已儲存並寫入稽核軌跡。');
+}
+function highlightIssue(id){
+  const i=issues.find(x=>x.id===id);
+  if(!i)return;
+  i.status='已 Highlight';i.risk='bad';
+  timeline.unshift({time:new Date().toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'}),text:`「${i.title}」已進行管理升級，負責人 ${i.owner}。`});
+  renderIssues();renderTimeline();showToast('已標記為 Highlight。');
+}
+function escalateAll(){
+  issues.filter(i=>i.status==='待承諾'||i.status==='需確認').forEach(i=>{i.status='已 Highlight';i.risk='bad'});
+  timeline.unshift({time:new Date().toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'}),text:'系統已將逾期與未回覆 Commit 批次進行管理升級。'});
+  renderIssues();renderTimeline();updateKPIs();showToast('逾期項目已完成管理升級。');
+}
+function previewChange(){
+  const p=Number(document.getElementById('changePct').value);
+  document.getElementById('changePctText').value=(p>=0?'+':'')+p+'%';
+}
+function applyDemandChange(){
+  const p=Number(document.getElementById('changePct').value);
+  const old=demand;
+  demand=Math.max(1000,Math.round(demand*(1+p/100)));
+  document.getElementById('kpiVolatility').textContent=Math.abs(p).toFixed(1)+'%';
+  if(p>15 && !issues.find(i=>i.title==='需求波動超過治理門檻')){
+    issues.unshift({id:Date.now(),title:'需求波動超過治理門檻',gap:Math.round(demand-supply),owner:'業務規劃主管',due:'2026-07-14',status:'需確認',risk:'bad',cause:'外部需求變動'});
+  }
+  document.getElementById('changeResult').innerHTML=`需求由 <strong>${fmt(old)}</strong> 變更為 <strong>${fmt(demand)}</strong>，有限產能承諾率變為 <strong>${(supply/demand*100).toFixed(1)}%</strong>，需新增能力 <strong>${Math.max(0,(demand/supply-1)*100).toFixed(1)}%</strong>。`;
+  timeline.unshift({time:new Date().toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'}),text:`已套用 ${p>=0?'+':''}${p}% 需求變動，系統重新評估瓶頸與 Commit。`});
+  updateKPIs();renderScenario();renderIssues();renderTimeline();showToast('需求情境已套用。');
+}
+function quickApplyChange(){
+  const p=Number(document.getElementById('quickChangePct').value||0);
+  demand=Math.round(demand*(1+p/100));
+  timeline.unshift({time:new Date().toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'}),text:`新增需求版本 ${document.getElementById('demandVersion').value}：${document.getElementById('changeReason').value}，變動 ${p>=0?'+':''}${p}%。`});
+  updateKPIs();renderScenario();renderTimeline();closeModal('changeModal');showToast('需求變更已建立並觸發重新計算。');
+}
+function refreshScenario(){showToast(`${document.getElementById('plant').value}／${document.getElementById('horizon').selectedOptions[0].text} 已更新。`)}
+function clearTimeline(){timeline=[];renderTimeline();showToast('畫面上的活動紀錄已清除。')}
+function showToast(msg){
+  const t=document.getElementById('toast');t.textContent=msg;t.style.display='block';
+  clearTimeout(window.__toast);window.__toast=setTimeout(()=>t.style.display='none',2200);
+}
+document.querySelectorAll('.modal-mask').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.style.display='none'}));
+renderScenario();renderIssues();renderTimeline();updateKPIs();
+</script>
+</body>
+</html>
