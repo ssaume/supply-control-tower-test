@@ -9,7 +9,7 @@
   <meta http-equiv="Expires" content="0" />
   <meta name="description" content="跨廠區產品、BOM、供應網路、供需變更、瓶頸、承諾與決策管理互動原型" />
   <title>供需承諾控制塔｜互動原型</title>
-  <link rel="stylesheet" href="styles-v20260714-demand6.css" />
+  <link rel="stylesheet" href="styles-v20260714-import7.css" />
 </head>
 <body>
   <div class="app-shell">
@@ -24,6 +24,17 @@
       </div>
 
       <nav class="main-nav" aria-label="主要導覽">
+        <section class="nav-group" data-nav-group="input">
+          <button class="nav-group-toggle" type="button" aria-expanded="true">
+            <span class="nav-group-icon">⇩</span>
+            <span class="nav-group-label">需求管理</span>
+            <span class="nav-group-chevron">⌄</span>
+          </button>
+          <div class="nav-group-items">
+            <button class="nav-item" data-view="import" title="需求匯入"><span class="nav-index">01</span><span class="nav-label">需求匯入</span></button>
+          </div>
+        </section>
+
         <section class="nav-group" data-nav-group="overview">
           <button class="nav-group-toggle" type="button" aria-expanded="true">
             <span class="nav-group-icon">▦</span>
@@ -31,14 +42,14 @@
             <span class="nav-group-chevron">⌄</span>
           </button>
           <div class="nav-group-items">
-            <button class="nav-item active" data-view="overview" title="總覽控制塔"><span class="nav-index">01</span><span class="nav-label">總覽控制塔</span></button>
-            <button class="nav-item" data-view="demand" title="需求總覽"><span class="nav-index">02</span><span class="nav-label">需求總覽</span></button>
-            <button class="nav-item" data-view="shipment" title="出貨總覽"><span class="nav-index">03</span><span class="nav-label">出貨總覽</span></button>
-            <button class="nav-item" data-view="simulation" title="有限／無限模擬"><span class="nav-index">04</span><span class="nav-label">有限／無限模擬</span></button>
-            <button class="nav-item" data-view="network" title="供應網路與 BOM"><span class="nav-index">05</span><span class="nav-label">供應網路與 BOM</span></button>
-            <button class="nav-item" data-view="routing" title="生產供應途程"><span class="nav-index">06</span><span class="nav-label">生產供應途程</span></button>
-            <button class="nav-item" data-view="production" title="產區現況"><span class="nav-index">07</span><span class="nav-label">產區現況</span></button>
-            <button class="nav-item" data-view="bottlenecks" title="瓶頸分析"><span class="nav-index">08</span><span class="nav-label">瓶頸分析</span></button>
+            <button class="nav-item active" data-view="overview" title="總覽控制塔"><span class="nav-index">02</span><span class="nav-label">總覽控制塔</span></button>
+            <button class="nav-item" data-view="demand" title="需求總覽"><span class="nav-index">03</span><span class="nav-label">需求總覽</span></button>
+            <button class="nav-item" data-view="shipment" title="出貨總覽"><span class="nav-index">04</span><span class="nav-label">出貨總覽</span></button>
+            <button class="nav-item" data-view="simulation" title="有限／無限模擬"><span class="nav-index">05</span><span class="nav-label">有限／無限模擬</span></button>
+            <button class="nav-item" data-view="network" title="供應網路與 BOM"><span class="nav-index">06</span><span class="nav-label">供應網路與 BOM</span></button>
+            <button class="nav-item" data-view="routing" title="生產供應途程"><span class="nav-index">07</span><span class="nav-label">生產供應途程</span></button>
+            <button class="nav-item" data-view="production" title="產區現況"><span class="nav-index">08</span><span class="nav-label">產區現況</span></button>
+            <button class="nav-item" data-view="bottlenecks" title="瓶頸分析"><span class="nav-index">09</span><span class="nav-label">瓶頸分析</span></button>
           </div>
         </section>
 
@@ -49,18 +60,18 @@
             <span class="nav-group-chevron">⌄</span>
           </button>
           <div class="nav-group-items">
-            <button class="nav-item" data-view="events" title="需求變更事件"><span class="nav-index">09</span><span class="nav-label">需求變更事件</span></button>
-            <button class="nav-item" data-view="commit" title="責任人 Commit"><span class="nav-index">10</span><span class="nav-label">責任人 Commit</span></button>
-            <button class="nav-item" data-view="decision" title="跨部門決策室"><span class="nav-index">11</span><span class="nav-label">跨部門決策室</span></button>
-            <button class="nav-item" data-view="tracking" title="執行追蹤與 Highlight"><span class="nav-index">12</span><span class="nav-label">執行追蹤與 Highlight</span></button>
+            <button class="nav-item" data-view="events" title="需求變更事件"><span class="nav-index">10</span><span class="nav-label">需求變更事件</span></button>
+            <button class="nav-item" data-view="commit" title="責任人 Commit"><span class="nav-index">11</span><span class="nav-label">責任人 Commit</span></button>
+            <button class="nav-item" data-view="decision" title="跨部門決策室"><span class="nav-index">12</span><span class="nav-label">跨部門決策室</span></button>
+            <button class="nav-item" data-view="tracking" title="執行追蹤與 Highlight"><span class="nav-index">13</span><span class="nav-label">執行追蹤與 Highlight</span></button>
           </div>
         </section>
       </nav>
 
       <div class="sidebar-footer">
-        <div class="system-status"><i></i>原型資料已同步</div>
-        <div class="build-version">Build 2026.07.14-DEMAND6</div>
-        <button id="resetDemo" class="secondary-button full">重設示範資料</button>
+        <div class="system-status"><i></i>需求資料由使用者匯入</div>
+        <div class="build-version">Build 2026.07.14-IMPORT7</div>
+        <button id="resetDemo" class="secondary-button full">清除需求資料</button>
       </div>
     </aside>
 
@@ -159,6 +170,90 @@
           </div>
         </section>
 
+        <!-- Demand Import -->
+        <section class="view" id="view-import">
+          <div class="kpi-grid compact-kpis" id="importKpis"></div>
+
+          <article class="panel import-intro-panel">
+            <div class="panel-header stacked-mobile">
+              <div>
+                <p class="eyebrow">DEMAND INTAKE</p>
+                <h2>需求匯入</h2>
+                <p class="muted">初始環境不含任何需求事件。可透過 CSV／JSON 檔案批次匯入，或以成品料號單筆 KEY IN。保存後會立即出現在需求總覽，並依來源進入對應關係鏈。</p>
+              </div>
+              <button class="secondary-button jump-view" data-target="demand">前往需求總覽</button>
+            </div>
+          </article>
+
+          <div class="grid equal import-workspace">
+            <article class="panel">
+              <div class="panel-header">
+                <div><p class="eyebrow">FILE UPLOAD</p><h2>檔案上傳</h2></div>
+                <button class="text-button" id="downloadDemandTemplate">下載 CSV 範本</button>
+              </div>
+              <label class="file-drop-zone" id="demandFileDrop">
+                <input id="demandFileInput" type="file" accept=".csv,.json,text/csv,application/json" />
+                <span class="file-drop-icon">⇧</span>
+                <strong>選擇或拖放需求檔案</strong>
+                <small>支援 CSV、JSON；每一列／物件會建立一筆獨立需求日期事件。</small>
+              </label>
+              <div class="import-file-status" id="demandFileStatus">尚未選擇檔案</div>
+              <div class="table-wrap import-preview-wrap">
+                <table class="import-preview-table">
+                  <thead><tr><th>來源</th><th>成品料號</th><th>工廠</th><th>數量</th><th>需求日期</th><th>提出者</th><th>檢核</th></tr></thead>
+                  <tbody id="demandImportPreview"><tr><td colspan="7">請先選擇檔案</td></tr></tbody>
+                </table>
+              </div>
+              <div class="detail-actions">
+                <button class="primary-button" id="confirmDemandFileImport" disabled>匯入檢核通過資料</button>
+                <button class="secondary-button" id="clearDemandFile">清除預覽</button>
+              </div>
+            </article>
+
+            <article class="panel manual-demand-panel">
+              <div class="panel-header">
+                <div><p class="eyebrow">MANUAL ENTRY</p><h2>人工單筆 KEY 單</h2></div>
+                <span class="tag neutral">日期顆粒度：天</span>
+              </div>
+              <form id="manualDemandForm" class="manual-demand-form">
+                <label><span>需求來源</span><select id="manualDemandSource" required>
+                  <option value="客戶預測">客戶預測</option>
+                  <option value="內部預測">內部預測</option>
+                  <option value="內部需求">內部需求</option>
+                  <option value="計畫庫存">計畫庫存</option>
+                  <option value="緊急詢單">緊急詢單</option>
+                  <option value="客戶PO">客戶 PO</option>
+                </select></label>
+                <label class="form-span-2"><span>成品料號</span><select id="manualDemandSku" required></select></label>
+                <div class="form-span-2">
+                  <span class="form-field-label">可生產廠區</span>
+                  <div id="manualFactoryOptions" class="factory-option-grid"></div>
+                </div>
+                <label><span>需求數量</span><input id="manualDemandQty" type="number" min="1" step="1" placeholder="例如 5000" required /></label>
+                <label><span>需求日期</span><input id="manualDemandDate" type="date" min="2026-07-14" required /></label>
+                <label><span>提出者</span><input id="manualDemandProposer" type="text" placeholder="姓名" required /></label>
+                <label><span>提出部門</span><input id="manualDemandDept" type="text" placeholder="部門" required /></label>
+                <label><span>客戶／需求用途</span><input id="manualDemandAudience" type="text" placeholder="客戶名稱或內部用途" /></label>
+                <label><span>目的國家／城市</span><input id="manualDemandDestination" type="text" placeholder="客戶 PO 時填寫，例如 日本／名古屋" /></label>
+                <label class="form-span-2"><span>備註</span><textarea id="manualDemandNote" rows="3" placeholder="補充來源文件、專案或優先順序說明"></textarea></label>
+                <div class="form-span-2 manual-demand-summary" id="manualDemandSummary"></div>
+                <div class="form-span-2 detail-actions">
+                  <button class="primary-button" type="submit">保存需求事件</button>
+                  <button class="secondary-button" type="reset" id="resetManualDemand">清除欄位</button>
+                </div>
+              </form>
+            </article>
+          </div>
+
+          <article class="panel">
+            <div class="panel-header stacked-mobile">
+              <div><p class="eyebrow">RECENT INTAKE</p><h2>最近匯入紀錄</h2></div>
+              <span class="tag neutral" id="recentImportCount">0筆</span>
+            </div>
+            <div id="recentDemandImports" class="recent-import-grid"><div class="empty-state">尚未匯入需求</div></div>
+          </article>
+        </section>
+
         <!-- Demand Overview -->
         <section class="view" id="view-demand">
           <div class="kpi-grid demand-source-kpis" id="demandKpis"></div>
@@ -220,7 +315,7 @@
             </div>
             <div class="table-wrap demand-table-wrap">
               <table class="demand-table">
-                <thead><tr><th>需求事件／來源批次</th><th>需求日期</th><th>來源</th><th>狀態</th><th>提出／版本</th><th>事件關係鏈</th><th>客戶／用途</th><th>產品／成品料號</th><th>需求量</th><th>內部 SO</th><th>操作</th></tr></thead>
+                <thead><tr><th>需求事件／來源批次</th><th>需求日期</th><th>來源</th><th>狀態</th><th>提出／版本</th><th>事件關係鏈</th><th>客戶／用途</th><th>產品／成品料號</th><th>需求量</th><th>供給覆蓋</th><th>內部 SO</th><th>操作</th></tr></thead>
                 <tbody id="demandEventTable"></tbody>
               </table>
             </div>
@@ -638,6 +733,6 @@
     </div>
   </div>
 
-  <script src="app-v20260714-demand6.js"></script>
+  <script src="app-v20260714-import7.js"></script>
 </body>
 </html>

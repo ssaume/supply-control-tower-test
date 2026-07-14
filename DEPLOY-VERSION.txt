@@ -1,13 +1,6 @@
-Supply Demand Control Tower
-Build: 2026.07.14-DEMAND6
-
-Versioned assets:
-- styles-v20260714-demand6.css
-- app-v20260714-demand6.js
-
-Key changes:
-- Internal demand source and revised conversion chain
-- Demand conversion relationship graph
-- Proposer/date/version audit fields
-- Work-order material source: inventory vs purchase PO
-- Consistent production-route view buttons
+Supply & Commitment Control Tower
+Build: 2026.07.14-IMPORT7
+Demand baseline: empty
+Features: demand file upload, manual demand entry, independent inquiry chain, inventory/WIP demand allocation, responsive information tiles
+CSS: styles-v20260714-import7.css
+JS: app-v20260714-import7.js

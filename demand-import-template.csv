@@ -1,0 +1,4 @@
+source,sku,factory,qty,demandDate,proposer,proposerDept,audience,destination,note
+客戶預測,UPS-100,TW01,5000,2026-08-15,王小明,全球業務規劃,Formosa Data Center,台灣／台北,季度預測
+緊急詢單,RTR-103,CN04,800,2026-07-28,李明,區域業務,Dragon Cloud,中國／上海,急單詢價
+內部預測,ESS-104,TH05,1200,2026-08-20,陳華,S&OP規劃,東南亞備庫,,月度補庫
