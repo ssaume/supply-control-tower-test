@@ -9,7 +9,7 @@
   <meta http-equiv="Expires" content="0" />
   <meta name="description" content="跨廠區產品、BOM、供應網路、供需變更、瓶頸、承諾與決策管理互動原型" />
   <title>供需承諾控制塔｜互動原型</title>
-  <link rel="stylesheet" href="styles-v20260714-import8.css" />
+  <link rel="stylesheet" href="styles-v20260714-import9.css" />
 </head>
 <body>
   <div class="app-shell">
@@ -70,7 +70,7 @@
 
       <div class="sidebar-footer">
         <div class="system-status"><i></i>需求資料由使用者匯入</div>
-        <div class="build-version">Build 2026.07.14-IMPORT8</div>
+        <div class="build-version">Build 2026.07.14-IMPORT9</div>
         <button id="resetDemo" class="secondary-button full">清除需求資料</button>
       </div>
     </aside>
@@ -179,7 +179,7 @@
               <div>
                 <p class="eyebrow">DEMAND INTAKE</p>
                 <h2>需求匯入</h2>
-                <p class="muted">初始環境不含任何需求事件。可透過 CSV／JSON 檔案批次匯入，或使用清除前示範資料建立的標準下拉選項進行單筆建單。保存後會立即出現在需求總覽，並依來源進入對應關係鏈。</p>
+                <p class="muted">初始環境不含任何需求事件。可透過 CSV／JSON 檔案批次匯入，或以業務、客戶、出貨地等主檔下拉選單進行單筆建單。需求量可直接輸入，需求日期使用日曆選擇；客戶預測或客戶 PO 若落在產品接單 LT 內，會自動進入事件審批。</p>
               </div>
               <button class="secondary-button jump-view" data-target="demand">前往需求總覽</button>
             </div>
@@ -217,22 +217,18 @@
               </div>
               <form id="manualDemandForm" class="manual-demand-form">
                 <label><span>需求來源</span><select id="manualDemandSource" required>
-                  <option value="客戶預測">客戶預測</option>
-                  <option value="內部預測">內部預測</option>
-                  <option value="內部需求">內部需求</option>
-                  <option value="計畫庫存">計畫庫存</option>
-                  <option value="緊急詢單">緊急詢單</option>
-                  <option value="客戶PO">客戶 PO</option>
+                  <option value="客戶">客戶</option>
+                  <option value="內部">內部</option>
                 </select></label>
+                <label><span>需求類型</span><select id="manualDemandType" required></select></label>
                 <label class="form-span-2"><span>成品料號</span><select id="manualDemandSku" required></select></label>
                 <label class="form-span-2"><span>可生產廠區</span><select id="manualDemandFactory" required></select></label>
-                <label><span>需求數量</span><select id="manualDemandQty" required></select></label>
-                <label><span>需求日期</span><select id="manualDemandDate" required></select></label>
-                <label><span>提出者</span><select id="manualDemandProposer" required></select></label>
-                <label><span>提出部門</span><select id="manualDemandDept" required></select></label>
-                <label><span>客戶／需求用途</span><select id="manualDemandAudience" required></select></label>
-                <label><span>目的國家／城市</span><select id="manualDemandDestination" required></select></label>
-                <label class="form-span-2"><span>需求說明</span><select id="manualDemandNote" required></select></label>
+                <label><span>需求數量</span><input id="manualDemandQty" type="number" min="1" step="1" value="5000" required /></label>
+                <label><span>需求日期</span><input id="manualDemandDate" type="date" min="2026-07-14" value="2026-08-15" required /></label>
+                <label><span id="manualDemandProposerLabel">業務</span><select id="manualDemandProposer" required></select></label>
+                <label><span>提出部門</span><input id="manualDemandDept" type="text" readonly aria-readonly="true" /></label>
+                <label><span id="manualDemandAudienceLabel">客戶</span><select id="manualDemandAudience" required></select></label>
+                <label><span>出貨地</span><select id="manualDemandDestination" required></select></label>
                 <div class="form-span-2 manual-demand-summary" id="manualDemandSummary"></div>
                 <div class="form-span-2 detail-actions">
                   <button class="primary-button" type="submit">保存需求事件</button>
@@ -263,17 +259,15 @@
                 <p class="muted">需求依需求日期拆分成獨立事件，並保留來源鏈；點擊任一事件列，可用標準化資訊磚展開對應內製／委外工單與物料採購進度。只有客戶 PO 能轉內部 SO。</p>
               </div>
               <div class="demand-filters">
-                <label><span>來源</span><select id="demandSourceFilter">
-                  <option value="all">全部來源</option>
-                  <option value="客戶預測">客戶預測</option>
-                  <option value="內部預測">內部預測</option>
-                  <option value="內部需求">內部需求</option>
-                  <option value="客戶PO">客戶 PO</option>
-                  <option value="計畫庫存">計畫庫存</option>
-                  <option value="緊急詢單">緊急詢單</option>
+                <label><span>來源類別</span><select id="demandSourceFilter">
+                  <option value="all">客戶＋內部</option>
+                  <option value="客戶">客戶</option>
+                  <option value="內部">內部</option>
                 </select></label>
                 <label><span>狀態</span><select id="demandStatusFilter">
                   <option value="all">全部狀態</option>
+                  <option value="待審批">待審批</option>
+                  <option value="詢單評估">詢單評估</option>
                   <option value="待整合">待整合</option>
                   <option value="待確認">待確認</option>
                   <option value="已確認">已確認</option>
@@ -312,7 +306,7 @@
             </div>
             <div class="table-wrap demand-table-wrap">
               <table class="demand-table">
-                <thead><tr><th>需求事件／來源批次</th><th>需求日期</th><th>來源</th><th>狀態</th><th>提出／版本</th><th>事件關係鏈</th><th>客戶／用途</th><th>產品／成品料號</th><th>需求量</th><th>供給覆蓋</th><th>內部 SO</th><th>操作</th></tr></thead>
+                <thead><tr><th>需求事件／來源批次</th><th>需求日期</th><th>來源／類型</th><th>狀態</th><th>提出／版本</th><th>事件關係鏈</th><th>客戶／用途</th><th>產品／成品料號</th><th>需求量</th><th>供給覆蓋</th><th>內部 SO</th><th>操作</th></tr></thead>
                 <tbody id="demandEventTable"></tbody>
               </table>
             </div>
@@ -730,6 +724,6 @@
     </div>
   </div>
 
-  <script src="app-v20260714-import8.js"></script>
+  <script src="app-v20260714-import9.js"></script>
 </body>
 </html>

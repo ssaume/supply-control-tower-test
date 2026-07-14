@@ -1,8 +1,2 @@
-Supply & Commitment Control Tower
-Build: 2026.07.14-IMPORT8
-Demand baseline: empty
-Features: demand file upload, manual demand entry, independent inquiry chain, inventory/WIP demand allocation, responsive information tiles
-CSS: styles-v20260714-import8.css
-JS: app-v20260714-import8.js
-
-Change: Manual entry categorical, quantity, and date fields now use dropdown options from the pre-clear demonstration dataset.
+Build 2026.07.14-IMPORT9
+Assets: styles-v20260714-import9.css / app-v20260714-import9.js
