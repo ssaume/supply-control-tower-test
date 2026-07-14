@@ -513,19 +513,71 @@ function progressHtml(progress,label=''){
   const cls=progress<40?'red':progress<75?'yellow':'green';
   return `<div class="order-progress"><div><strong>${Math.round(progress)}%</strong><span>${label}</span></div><div class="mini-progress ${cls}"><i style="width:${Math.min(100,progress)}%"></i></div></div>`;
 }
+function tileMeta(label,value){
+  return `<div class="info-tile-meta"><span>${label}</span><strong>${value}</strong></div>`;
+}
+function metricInfoTile(label,value,note,tone='blue'){
+  return `<article class="standard-info-tile metric-info-tile tone-${tone}"><span class="metric-info-label">${label}</span><strong>${value}</strong><small>${note}</small></article>`;
+}
+function workOrderTile(w,event,context,selected=false,compact=false){
+  return `<button type="button" class="standard-info-tile order-info-tile work-order-link ${selected?'selected':''} ${compact?'compact':''}" data-event="${event.id}" data-work-order="${w.id}" data-context="${context}">
+    <div class="info-tile-top"><div class="info-tile-badges"><span class="tag ${w.kind==='委外工單'?'warning':'info'}">${w.kind}</span><span class="tag neutral">BOM L${w.level}</span></div>${fulfillmentStatusTag(w.status)}</div>
+    <div class="info-tile-title"><strong>${w.item}</strong><span>${w.id}</span><small>${w.bomId}</small></div>
+    <div class="info-tile-meta-grid">
+      ${tileMeta('生產單位',`${w.plant}｜${factoryName(w.plant)||w.plant}`)}
+      ${tileMeta('計畫數量',`${fmt(w.qty)} 件`)}
+      ${tileMeta('開始日期',formatDate(w.start))}
+      ${tileMeta('完成日期',formatDate(w.due))}
+    </div>
+    <div class="info-tile-footer"><span>${w.relationLabel}</span>${progressHtml(w.progress,'生產')}</div>
+  </button>`;
+}
+function purchaseOrderTile(po,compact=false){
+  const normalized=po.status==='已到料'?'已完成':po.status==='到料風險'?'延遲風險':'執行中';
+  return `<article class="standard-info-tile order-info-tile purchase-info-tile ${compact?'compact':''}">
+    <div class="info-tile-top"><div class="info-tile-badges"><span class="tag success">採購 PO</span><span class="tag neutral">BOM L${po.level}</span></div>${fulfillmentStatusTag(normalized)}</div>
+    <div class="info-tile-title"><strong>${po.item}</strong><span>${po.id}</span><small>${po.bomId}</small></div>
+    <div class="info-tile-meta-grid">
+      ${tileMeta('供應來源',po.vendor)}
+      ${tileMeta('訂購數量',`${fmt(po.qty)} 件`)}
+      ${tileMeta('已到數量',`${fmt(po.received)} 件`)}
+      ${tileMeta('承諾到料',formatDate(po.due))}
+    </div>
+    <div class="info-tile-footer"><span>${po.relationLabel}</span>${progressHtml(po.progress,'到料')}</div>
+  </article>`;
+}
+function selectedWorkOrderTile(w){
+  return `<article class="standard-info-tile order-info-tile selected current-order-tile">
+    <div class="info-tile-top"><div class="info-tile-badges"><span class="tag ${w.kind==='委外工單'?'warning':'info'}">目前工單</span><span class="tag neutral">BOM L${w.level}</span></div>${fulfillmentStatusTag(w.status)}</div>
+    <div class="info-tile-title"><strong>${w.item}</strong><span>${w.id}</span><small>${w.bomId}</small></div>
+    <div class="info-tile-meta-grid">
+      ${tileMeta('生產單位',`${w.plant}｜${factoryName(w.plant)||w.plant}`)}
+      ${tileMeta('計畫數量',`${fmt(w.qty)} 件`)}
+      ${tileMeta('開始日期',formatDate(w.start))}
+      ${tileMeta('完成日期',formatDate(w.due))}
+    </div>
+    <div class="info-tile-footer"><span>${w.relationLabel}</span>${progressHtml(w.progress,'生產')}</div>
+  </article>`;
+}
 function fulfillmentPanel(event,context){
   const f=buildFulfillment(event);const summary=fulfillmentSummary(f);
   const selectedId=state.selectedWorkOrderByEvent[event.id]||f.workOrders[0]?.id||'';
   const selected=f.workOrders.find(x=>x.id===selectedId)||f.workOrders[0];
   if(selected)state.selectedWorkOrderByEvent[event.id]=selected.id;
-  const workRows=f.workOrders.map(w=>`<tr class="fulfillment-order-row ${w.id===selected?.id?'selected':''}" data-event="${event.id}" data-work-order="${w.id}" data-context="${context}"><td><button class="work-order-link" data-event="${event.id}" data-work-order="${w.id}" data-context="${context}">${w.id}</button><br><span class="event-id">BOM L${w.level}・${w.bomId}</span></td><td><span class="tag ${w.kind==='委外工單'?'warning':'info'}">${w.kind}</span><br><span class="event-id">${w.relationLabel}</span></td><td><strong>${w.item}</strong></td><td><strong>${w.plant}</strong><br><span class="event-id">${factoryName(w.plant)||w.plant}</span></td><td>${fmt(w.qty)} 件</td><td>${formatDate(w.start)} → ${formatDate(w.due)}</td><td>${progressHtml(w.progress)}</td><td>${fulfillmentStatusTag(w.status)}</td></tr>`).join('');
-  const poRows=f.purchaseOrders.map(po=>`<tr><td><strong>${po.id}</strong><br><span class="event-id">BOM L${po.level}・${po.bomId}</span></td><td><strong>${po.item}</strong><br><span class="event-id">${po.relationLabel}</span></td><td>${po.vendor}</td><td>${fmt(po.qty)} 件</td><td>${fmt(po.received)} 件</td><td>${formatDate(po.due)}</td><td>${progressHtml(po.progress,'到料')}</td><td>${fulfillmentStatusTag(po.status==='已到料'?'已完成':po.status==='到料風險'?'延遲風險':'執行中')}</td></tr>`).join('');
+  const workTiles=f.workOrders.map(w=>workOrderTile(w,event,context,w.id===selected?.id)).join('');
+  const poTiles=f.purchaseOrders.map(po=>purchaseOrderTile(po)).join('');
   return `<div class="fulfillment-panel" data-fulfillment-event="${event.id}">
-    <div class="fulfillment-head"><div><p class="eyebrow">DEMAND FULFILLMENT TRACE</p><h3>${event.id}｜${event.product} ${event.sku}</h3><p>依生產BOM與跨廠供應關係追蹤工單、委外與採購到料。點擊工單可查看直接下階關係。</p></div><span class="tag ${summary.risk?'danger':'success'}">${summary.risk?`${summary.risk}項風險`:'履行正常'}</span></div>
-    <div class="fulfillment-kpis"><div><span>生產平均進度</span><strong>${summary.workAvg.toFixed(0)}%</strong></div><div><span>物料到料率</span><strong>${summary.matRate.toFixed(0)}%</strong></div><div><span>內製工單</span><strong>${summary.internal}</strong></div><div><span>委外工單</span><strong>${summary.outsource}</strong></div><div><span>採購PO</span><strong>${summary.purchase}</strong></div></div>
+    <div class="fulfillment-head"><div><p class="eyebrow">DEMAND FULFILLMENT TRACE</p><h3>${event.id}｜${event.product} ${event.sku}</h3><p>依生產 BOM 與跨廠供應關係追蹤工單、委外與採購到料。資訊磚採相同欄位規格，點擊工單可查看直接下階關係。</p></div><span class="tag ${summary.risk?'danger':'success'}">${summary.risk?`${summary.risk}項風險`:'履行正常'}</span></div>
+    <div class="fulfillment-kpis standard-tile-grid summary-tile-grid">
+      ${metricInfoTile('生產平均進度',`${summary.workAvg.toFixed(0)}%`,'所有內製與委外工單','blue')}
+      ${metricInfoTile('物料到料率',`${summary.matRate.toFixed(0)}%`,'所有採購 PO 加權','green')}
+      ${metricInfoTile('內製工單',summary.internal,'由本廠生產執行','blue')}
+      ${metricInfoTile('委外工單',summary.outsource,'友廠或協力廠承接','yellow')}
+      ${metricInfoTile('採購 PO',summary.purchase,'外購料與現成模組','green')}
+    </div>
     <div class="fulfillment-grid">
-      <section class="fulfillment-section"><div class="subsection-title"><div><h4>對應生產工單</h4><span>含內製與友廠／委外工單</span></div><span class="tag neutral">${f.workOrders.length}張</span></div><div class="table-wrap fulfillment-table-wrap"><table class="fulfillment-table"><thead><tr><th>工單／BOM</th><th>類型</th><th>生產項目</th><th>生產單位</th><th>數量</th><th>計畫期間</th><th>進度</th><th>狀態</th></tr></thead><tbody>${workRows||'<tr><td colspan="8">尚未產生工單</td></tr>'}</tbody></table></div></section>
-      <section class="fulfillment-section"><div class="subsection-title"><div><h4>物料採購清單</h4><span>外購零件、現成模組與供應商到料</span></div><span class="tag neutral">${f.purchaseOrders.length}張</span></div><div class="table-wrap fulfillment-table-wrap"><table class="fulfillment-table"><thead><tr><th>採購PO／BOM</th><th>採購項目</th><th>供應來源</th><th>訂購</th><th>已到</th><th>承諾日</th><th>到料進度</th><th>狀態</th></tr></thead><tbody>${poRows||'<tr><td colspan="8">無外購項目</td></tr>'}</tbody></table></div></section>
+      <section class="fulfillment-section"><div class="subsection-title"><div><h4>對應生產工單</h4><span>標準資訊磚：類型、狀態、BOM、責任單位、數量、日期與進度</span></div><span class="tag neutral">${f.workOrders.length}張</span></div><div class="standard-tile-grid order-tile-grid">${workTiles||'<div class="empty-state">尚未產生工單</div>'}</div></section>
+      <section class="fulfillment-section"><div class="subsection-title"><div><h4>物料採購清單</h4><span>標準資訊磚：狀態、BOM、供應商、數量、承諾日與到料進度</span></div><span class="tag neutral">${f.purchaseOrders.length}張</span></div><div class="standard-tile-grid order-tile-grid">${poTiles||'<div class="empty-state">無外購項目</div>'}</div></section>
     </div>
     ${renderWorkOrderDependencies(f,selected)}
   </div>`;
@@ -535,10 +587,10 @@ function renderWorkOrderDependencies(f,selected){
   const childWorks=f.workOrders.filter(w=>w.parentBomId===selected.bomId&&w.id!==selected.id);
   const childPos=f.purchaseOrders.filter(po=>po.parentBomId===selected.bomId);
   const descendants=[...childWorks.map(x=>({...x,dependencyType:'work'})),...childPos.map(x=>({...x,dependencyType:'purchase'}))];
-  const cards=descendants.map(x=>x.dependencyType==='work'?`<button class="dependency-card work-order-link" data-event="${f.event.id}" data-work-order="${x.id}" data-context="dependency"><span class="tag ${x.kind==='委外工單'?'warning':'info'}">${x.kind}</span><strong>${x.item}</strong><small>${x.id}・${x.plant}</small>${progressHtml(x.progress)}</button>`:`<article class="dependency-card purchase"><span class="tag success">採購PO</span><strong>${x.item}</strong><small>${x.id}・${x.vendor}</small>${progressHtml(x.progress,'到料')}</article>`).join('');
+  const cards=descendants.map(x=>x.dependencyType==='work'?workOrderTile(x,f.event,'dependency',false,true):purchaseOrderTile(x,true)).join('');
   const path=[];let cursor=selected;const seen=new Set();
   while(cursor&&!seen.has(cursor.id)){seen.add(cursor.id);path.unshift(cursor);cursor=f.workOrders.find(w=>w.bomId===cursor.parentBomId);}
-  return `<section class="dependency-panel"><div class="dependency-header"><div><p class="eyebrow">BOM & SUPPLY CHAIN DRILLDOWN</p><h4>${selected.id}｜${selected.item}</h4><p>${path.map(x=>x.item).join(' → ')}</p></div><div class="dependency-meta"><span>${selected.kind}</span><strong>BOM L${selected.level}</strong><span>${selected.relationLabel}</span></div></div><div class="dependency-body"><div class="selected-order-card"><span>目前工單</span><strong>${selected.plant}｜${fmt(selected.qty)}件</strong><small>${formatDate(selected.start)} → ${formatDate(selected.due)}</small>${progressHtml(selected.progress)}</div><div class="dependency-arrow">下階供應<br>↓</div><div class="dependency-list">${cards||'<div class="leaf-node"><strong>此工單已是製造葉節點</strong><span>沒有更下階工單或採購PO。</span></div>'}</div></div></section>`;
+  return `<section class="dependency-panel"><div class="dependency-header"><div><p class="eyebrow">BOM & SUPPLY CHAIN DRILLDOWN</p><h4>${selected.id}｜${selected.item}</h4><p>${path.map(x=>x.item).join(' → ')}</p></div><div class="dependency-meta"><span>${selected.kind}</span><strong>BOM L${selected.level}</strong><span>${selected.relationLabel}</span></div></div><div class="dependency-body standardized-dependency-body"><div class="dependency-current">${selectedWorkOrderTile(selected)}</div><div class="dependency-flow-label"><span>直接下階供應</span><strong>↓</strong></div><div class="standard-tile-grid dependency-list">${cards||'<div class="leaf-node"><strong>此工單已是製造葉節點</strong><span>沒有更下階工單或採購 PO。</span></div>'}</div></div></section>`;
 }
 function bindFulfillmentInteractions(context){
   const root=context==='demand'?'#view-demand':'#view-shipment';
