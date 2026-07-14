@@ -9,7 +9,7 @@
   <meta http-equiv="Expires" content="0" />
   <meta name="description" content="跨廠區產品、BOM、供應網路、供需變更、瓶頸、承諾與決策管理互動原型" />
   <title>供需承諾控制塔｜互動原型</title>
-  <link rel="stylesheet" href="styles-v20260714-nav2.css" />
+  <link rel="stylesheet" href="styles-v20260714-route3.css" />
 </head>
 <body>
   <div class="app-shell">
@@ -59,7 +59,7 @@
 
       <div class="sidebar-footer">
         <div class="system-status"><i></i>原型資料已同步</div>
-        <div class="build-version">Build 2026.07.14-NAV2</div>
+        <div class="build-version">Build 2026.07.14-ROUTE3</div>
         <button id="resetDemo" class="secondary-button full">重設示範資料</button>
       </div>
     </aside>
@@ -466,18 +466,20 @@
               <div>
                 <p class="eyebrow">ROUTE SEQUENCE & MATERIAL FEED</p>
                 <h2>生產途程與站點物料供給</h2>
-                <p class="muted">途程卡片依生產先後由上往下排列；網路圖展開則由左側起點一路連到右側終點。每一道途程會列出承接工單、執行工廠／資源、完成進度，以及必須在該站點前齊套的採購 PO 或下階工單。</p>
+                <p class="muted">途程卡片適合閱讀細節；途程網路圖聚焦製程先後；站點生態圖則參考供應鏈網路圖，以分欄節點與關聯線呈現供應來源、製造站點、包裝配送與需求終點。</p>
               </div>
               <div class="routing-view-actions">
                 <div class="segmented-control route-view-toggle" id="routingViewToggle" aria-label="生產供應途程呈現方式">
                   <button class="active" data-route-view="sequence">途程卡片</button>
-                  <button data-route-view="network">網路圖展開</button>
+                  <button data-route-view="network">途程網路圖</button>
+                  <button data-route-view="ecosystem">站點生態圖</button>
                 </div>
                 <div class="route-legend"><span><i class="route-work"></i>生產工單</span><span><i class="route-outsource"></i>委外／友廠</span><span><i class="route-purchase"></i>採購供給</span></div>
               </div>
             </div>
             <div id="productionSupplyRoute" class="production-supply-route"></div>
             <div id="productionSupplyNetwork" class="production-supply-network" hidden></div>
+            <div id="productionSupplyEcosystem" class="production-supply-ecosystem" hidden></div>
           </article>
         </section>
 
@@ -623,6 +625,6 @@
     </div>
   </div>
 
-  <script src="app-v20260714-nav2.js"></script>
+  <script src="app-v20260714-route3.js"></script>
 </body>
 </html>

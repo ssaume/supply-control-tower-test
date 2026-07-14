@@ -1,3 +1,6 @@
-Build: 2026.07.14-NAV2
-Expected UI: collapsible sidebar + two collapsible groups (總覽與分析 / 事件審批)
-Assets: styles-v20260714-nav2.css, app-v20260714-nav2.js
+Supply & Commitment Control Tower
+Build: 2026.07.14-ROUTE3
+Feature: Production supply route station ecosystem view
+Assets:
+- styles-v20260714-route3.css
+- app-v20260714-route3.js
