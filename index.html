@@ -9,7 +9,7 @@
   <meta http-equiv="Expires" content="0" />
   <meta name="description" content="跨廠區產品、BOM、供應網路、供需變更、瓶頸、承諾與決策管理互動原型" />
   <title>供需承諾控制塔｜互動原型</title>
-  <link rel="stylesheet" href="styles-v20260714-zero10.css" />
+  <link rel="stylesheet" href="styles-v20260714-resource11.css" />
 </head>
 <body>
   <div class="app-shell">
@@ -35,6 +35,19 @@
           </div>
         </section>
 
+        <section class="nav-group" data-nav-group="resource">
+          <button class="nav-group-toggle" type="button" aria-expanded="true">
+            <span class="nav-group-icon">⚙</span>
+            <span class="nav-group-label">資源管理</span>
+            <span class="nav-group-chevron">⌄</span>
+          </button>
+          <div class="nav-group-items">
+            <button class="nav-item" data-view="workorders" title="工單匯入"><span class="nav-index">02</span><span class="nav-label">工單匯入</span></button>
+            <button class="nav-item" data-view="labor" title="工時管理"><span class="nav-index">03</span><span class="nav-label">工時管理</span></button>
+            <button class="nav-item" data-view="capacity" title="產能管理"><span class="nav-index">04</span><span class="nav-label">產能管理</span></button>
+          </div>
+        </section>
+
         <section class="nav-group" data-nav-group="overview">
           <button class="nav-group-toggle" type="button" aria-expanded="true">
             <span class="nav-group-icon">▦</span>
@@ -42,14 +55,14 @@
             <span class="nav-group-chevron">⌄</span>
           </button>
           <div class="nav-group-items">
-            <button class="nav-item active" data-view="overview" title="總覽控制塔"><span class="nav-index">02</span><span class="nav-label">總覽控制塔</span></button>
-            <button class="nav-item" data-view="demand" title="需求總覽"><span class="nav-index">03</span><span class="nav-label">需求總覽</span></button>
-            <button class="nav-item" data-view="shipment" title="出貨總覽"><span class="nav-index">04</span><span class="nav-label">出貨總覽</span></button>
-            <button class="nav-item" data-view="simulation" title="有限／無限模擬"><span class="nav-index">05</span><span class="nav-label">有限／無限模擬</span></button>
-            <button class="nav-item" data-view="network" title="供應網路與 BOM"><span class="nav-index">06</span><span class="nav-label">供應網路與 BOM</span></button>
-            <button class="nav-item" data-view="routing" title="生產供應途程"><span class="nav-index">07</span><span class="nav-label">生產供應途程</span></button>
-            <button class="nav-item" data-view="production" title="產區現況"><span class="nav-index">08</span><span class="nav-label">產區現況</span></button>
-            <button class="nav-item" data-view="bottlenecks" title="瓶頸分析"><span class="nav-index">09</span><span class="nav-label">瓶頸分析</span></button>
+            <button class="nav-item active" data-view="overview" title="總覽控制塔"><span class="nav-index">05</span><span class="nav-label">總覽控制塔</span></button>
+            <button class="nav-item" data-view="demand" title="需求總覽"><span class="nav-index">06</span><span class="nav-label">需求總覽</span></button>
+            <button class="nav-item" data-view="shipment" title="出貨總覽"><span class="nav-index">07</span><span class="nav-label">出貨總覽</span></button>
+            <button class="nav-item" data-view="simulation" title="有限／無限模擬"><span class="nav-index">08</span><span class="nav-label">有限／無限模擬</span></button>
+            <button class="nav-item" data-view="network" title="供應網路與 BOM"><span class="nav-index">09</span><span class="nav-label">供應網路與 BOM</span></button>
+            <button class="nav-item" data-view="routing" title="生產供應途程"><span class="nav-index">10</span><span class="nav-label">生產供應途程</span></button>
+            <button class="nav-item" data-view="production" title="產區現況"><span class="nav-index">11</span><span class="nav-label">產區現況</span></button>
+            <button class="nav-item" data-view="bottlenecks" title="瓶頸分析"><span class="nav-index">12</span><span class="nav-label">瓶頸分析</span></button>
           </div>
         </section>
 
@@ -60,17 +73,17 @@
             <span class="nav-group-chevron">⌄</span>
           </button>
           <div class="nav-group-items">
-            <button class="nav-item" data-view="events" title="需求變更事件"><span class="nav-index">10</span><span class="nav-label">需求變更事件</span></button>
-            <button class="nav-item" data-view="commit" title="責任人 Commit"><span class="nav-index">11</span><span class="nav-label">責任人 Commit</span></button>
-            <button class="nav-item" data-view="decision" title="跨部門決策室"><span class="nav-index">12</span><span class="nav-label">跨部門決策室</span></button>
-            <button class="nav-item" data-view="tracking" title="執行追蹤與 Highlight"><span class="nav-index">13</span><span class="nav-label">執行追蹤與 Highlight</span></button>
+            <button class="nav-item" data-view="events" title="需求變更事件"><span class="nav-index">13</span><span class="nav-label">需求變更事件</span></button>
+            <button class="nav-item" data-view="commit" title="責任人 Commit"><span class="nav-index">14</span><span class="nav-label">責任人 Commit</span></button>
+            <button class="nav-item" data-view="decision" title="跨部門決策室"><span class="nav-index">15</span><span class="nav-label">跨部門決策室</span></button>
+            <button class="nav-item" data-view="tracking" title="執行追蹤與 Highlight"><span class="nav-index">16</span><span class="nav-label">執行追蹤與 Highlight</span></button>
           </div>
         </section>
       </nav>
 
       <div class="sidebar-footer">
         <div class="system-status"><i></i>需求資料由使用者匯入</div>
-        <div class="build-version">Build 2026.07.14-ZERO10</div>
+        <div class="build-version">Build 2026.07.14-RESOURCE11</div>
         <button id="resetDemo" class="secondary-button full">清除交易資料</button>
       </div>
     </aside>
@@ -118,6 +131,70 @@
 
       <div class="view-container">
         <!-- Overview -->
+
+        <!-- Work Order Import -->
+        <section class="view" id="view-workorders">
+          <div class="kpi-grid compact-kpis" id="workOrderImportKpis"></div>
+          <article class="panel">
+            <div class="panel-header stacked-mobile">
+              <div><p class="eyebrow">WORK ORDER INTAKE</p><h2>工單匯入</h2><p class="muted">系統從零開始，不會因新增需求自動產生或假設既有在製工單。只有在此匯入的內製／委外工單才會進入需求耗用、產能 Loading 與產區現況。</p></div>
+              <span class="tag neutral">主檔驅動</span>
+            </div>
+          </article>
+          <div class="grid equal import-workspace">
+            <article class="panel">
+              <div class="panel-header"><div><p class="eyebrow">FILE UPLOAD</p><h2>工單檔案上傳</h2></div><button class="text-button" id="downloadWorkOrderTemplate">下載 CSV 範本</button></div>
+              <label class="file-drop-zone" id="workOrderFileDrop">
+                <input id="workOrderFileInput" type="file" accept=".csv,.json,text/csv,application/json" />
+                <span class="file-drop-icon">⇧</span><strong>選擇或拖放工單檔案</strong><small>支援 CSV、JSON；資料會依成品、途程、工廠與產能資源主檔檢核。</small>
+              </label>
+              <div class="import-file-status" id="workOrderFileStatus">尚未選擇檔案</div>
+              <div class="table-wrap import-preview-wrap"><table class="import-preview-table"><thead><tr><th>類型</th><th>成品</th><th>途程</th><th>工廠／資源</th><th>數量</th><th>期間</th><th>檢核</th></tr></thead><tbody id="workOrderImportPreview"><tr><td colspan="7">請先選擇檔案</td></tr></tbody></table></div>
+              <div class="detail-actions"><button class="primary-button" id="confirmWorkOrderImport" disabled>匯入檢核通過資料</button><button class="secondary-button" id="clearWorkOrderFile">清除預覽</button></div>
+            </article>
+            <article class="panel">
+              <div class="panel-header"><div><p class="eyebrow">MANUAL ENTRY</p><h2>人工單筆工單</h2></div><span class="tag neutral">工單主檔</span></div>
+              <form id="manualWorkOrderForm" class="manual-demand-form">
+                <label><span>工單類型</span><select id="manualWorkOrderKind"><option>內製工單</option><option>委外工單</option></select></label>
+                <label><span>工單狀態</span><select id="manualWorkOrderStatus"><option>待開工</option><option>執行中</option><option>接近完成</option><option>已完成</option><option>暫停</option></select></label>
+                <label class="form-span-2"><span>成品料號</span><select id="manualWorkOrderSku"></select></label>
+                <label><span>生產途程</span><select id="manualWorkOrderRoute"></select></label>
+                <label><span>執行工廠</span><select id="manualWorkOrderFactory"></select></label>
+                <label class="form-span-2"><span>產能資源</span><select id="manualWorkOrderResource"></select></label>
+                <label><span>工單數量</span><input id="manualWorkOrderQty" type="number" min="1" step="1" value="1000" required /></label>
+                <label><span>完成進度</span><input id="manualWorkOrderProgress" type="number" min="0" max="100" step="1" value="0" required /></label>
+                <label><span>計畫開始日</span><input id="manualWorkOrderStart" type="date" value="2026-07-15" required /></label>
+                <label><span>需求完成日</span><input id="manualWorkOrderDue" type="date" value="2026-07-25" required /></label>
+                <label class="form-span-2"><span>關聯需求事件</span><select id="manualWorkOrderDemand"><option value="">不指定需求事件</option></select></label>
+                <div class="form-span-2 workorder-estimate" id="manualWorkOrderEstimate"></div>
+                <div class="form-span-2 detail-actions"><button class="primary-button" type="submit">保存工單</button><button class="secondary-button" type="reset" id="resetManualWorkOrder">清除欄位</button></div>
+              </form>
+            </article>
+          </div>
+          <article class="panel"><div class="panel-header stacked-mobile"><div><p class="eyebrow">IMPORTED WORK ORDERS</p><h2>目前工單</h2></div><span class="tag neutral" id="workOrderCount">0張</span></div><div class="table-wrap"><table><thead><tr><th>工單</th><th>類型／狀態</th><th>成品與途程</th><th>工廠／資源</th><th>數量</th><th>單件工時</th><th>總需求工時</th><th>期間</th><th>需求關聯</th></tr></thead><tbody id="workOrderTable"></tbody></table></div></article>
+        </section>
+
+        <!-- Labor Standards -->
+        <section class="view" id="view-labor">
+          <div class="kpi-grid compact-kpis" id="laborKpis"></div>
+          <article class="panel">
+            <div class="panel-header stacked-mobile"><div><p class="eyebrow">UNIT LABOR STANDARD</p><h2>成品 × 生產途程單件工時</h2><p class="muted">每個成品在每一道生產途程都有單件標準工時。工單總需求工時、有限產能模擬與產區 Loading 均直接引用此主檔。</p></div><div class="production-filters"><label><span>產品類型</span><select id="laborProductFilter"></select></label><label><span>成品料號</span><select id="laborSkuFilter"></select></label></div></div>
+          </article>
+          <article class="panel"><div class="panel-header"><div><p class="eyebrow">ROUTE TIME MASTER</p><h2 id="laborTableTitle">單件工時明細</h2></div><button class="primary-button" id="saveLaborStandards">保存工時主檔</button></div><div class="table-wrap"><table class="labor-table"><thead><tr><th>途程序號</th><th>生產途程</th><th>資源類型</th><th>單件工時（小時／件）</th><th>每千件工時</th><th>估算說明</th></tr></thead><tbody id="laborStandardsBody"></tbody></table></div></article>
+        </section>
+
+        <!-- Capacity Management -->
+        <section class="view" id="view-capacity">
+          <div class="kpi-grid compact-kpis" id="capacityKpis"></div>
+          <article class="panel">
+            <div class="panel-header stacked-mobile"><div><p class="eyebrow">RESOURCE AVAILABILITY CALENDAR</p><h2>產能資源可用行事曆</h2><p class="muted">以天為單位維護每一座工廠、每一項產能資源是否可用及可用工時。產區現況會直接讀取此行事曆計算 Loading。</p></div><div class="production-filters"><label><span>工廠</span><select id="capacityFactorySelect"></select></label><label><span>時間範圍</span><select id="capacityHorizonSelect"><option value="14">未來14天</option><option value="28">未來28天</option><option value="42">未來42天</option></select></label></div></div>
+          </article>
+          <div class="grid capacity-management-layout">
+            <article class="panel capacity-calendar-panel"><div class="panel-header"><div><p class="eyebrow">DAILY CALENDAR</p><h2 id="capacityCalendarTitle">每日資源可用狀態</h2></div><div class="capacity-availability-legend"><span><i class="available"></i>可用</span><span><i class="reduced"></i>減班</span><span><i class="unavailable"></i>不可用</span></div></div><div class="capacity-grid-wrap"><table class="capacity-grid-table capacity-maintain-table"><thead id="capacityCalendarHead"></thead><tbody id="capacityCalendarBody"></tbody></table></div></article>
+            <article class="panel capacity-editor-panel"><div class="panel-header"><div><p class="eyebrow">AVAILABILITY MAINTENANCE</p><h2>可用性維護</h2></div></div><div id="capacityEditorEmpty" class="empty-state">點擊左側任一日期格進行維護</div><form id="capacityEditorForm" class="capacity-editor-form" hidden><label><span>工廠／資源</span><input id="capacityEditorResource" readonly /></label><label><span>日期</span><input id="capacityEditorDate" readonly /></label><label class="toggle-field"><input id="capacityEditorAvailable" type="checkbox" /><span>此資源當日可用</span></label><label><span>可用工時</span><input id="capacityEditorHours" type="number" min="0" max="24" step="0.5" /></label><label><span>異常／停機原因</span><select id="capacityEditorReason"><option value="">正常生產</option><option>預防保養</option><option>設備維修</option><option>國定假日</option><option>人力不足</option><option>減班</option><option>其他</option></select></label><button class="primary-button" type="submit">保存可用行事曆</button></form></article>
+          </div>
+        </section>
+
         <section class="view active" id="view-overview">
           <div class="kpi-grid" id="kpiGrid"></div>
 
@@ -591,7 +668,7 @@
               <div>
                 <p class="eyebrow">FACTORY LOADING & DAILY RESOURCE PLAN</p>
                 <h2>產區現況與資源時間網格</h2>
-                <p class="muted">先比較目前範圍內各廠平均 Loading，再展開單一工廠逐日檢視每一項產能資源正在生產的產品、料號、數量與負荷。</p>
+                <p class="muted">此頁直接引用「工單匯入」、「工時管理」與「產能管理」：工單數量 × 單件工時形成需求工時，再與資源每日可用工時比較，產生各廠 Loading 與逐日生產內容。</p>
               </div>
               <div class="production-filters">
                 <label><span>明細工廠</span><select id="productionFactorySelect"></select></label>
@@ -602,10 +679,12 @@
                 </select></label>
                 <label><span>資源類型</span><select id="productionResourceFilter">
                   <option value="all">全部資源</option>
+                  <option value="IQC">來料檢驗／齊套</option>
                   <option value="SMT">SMT／PCBA</option>
                   <option value="MODULE">模組製造</option>
                   <option value="ASSEMBLY">組裝</option>
                   <option value="TEST">測試／校正</option>
+                  <option value="PACK">包裝／入庫</option>
                 </select></label>
               </div>
             </div>
@@ -724,6 +803,6 @@
     </div>
   </div>
 
-  <script src="app-v20260714-zero10.js"></script>
+  <script src="app-v20260714-resource11.js"></script>
 </body>
 </html>

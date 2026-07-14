@@ -1,20 +1,29 @@
-PASS - HTML引用ZERO10 CSS
-PASS - HTML引用ZERO10 JS
-PASS - HTML顯示ZERO10 Build
-PASS - 初始需求事件為空
-PASS - 初始追蹤資料為空
-PASS - 事件使用全新空白儲存鍵
-PASS - 需求使用全新空白儲存鍵
-PASS - 追蹤使用全新空白儲存鍵
-PASS - 新需求預設沒有庫存與在製
-PASS - 沒有需求時產能Loading為0
-PASS - 履行展開區空白點擊可清除聚焦
-PASS - 站點生態圖空白點擊可清除聚焦
-PASS - JavaScript語法檢查通過
-PASS - index.html存在
-PASS - styles-v20260714-zero10.css存在
-PASS - app-v20260714-zero10.js存在
-PASS - README.md存在
-PASS - DEPLOY-VERSION.txt存在
-PASS - demand-import-template.csv存在
-PASS - .nojekyll存在
+Build 2026.07.14-RESOURCE11 validation
+
+Static / runtime
+- JavaScript syntax: PASS
+- Browser runtime exceptions: 0
+- Navigation items: 16
+- View modules: 16
+- Initial demand events: 0
+- Initial work orders: 0
+- Labor standard rows: 558 (93 finished goods x 6 route nodes)
+- Factory resource master: 7 resources per factory in the checked example
+
+Zero-start demand
+- Existing finished-goods inventory: 0
+- Existing WIP automatically consumed: 0
+- New demand gap: full demand quantity until a work order is explicitly imported and linked
+- Estimate basis: product order lead time + unit labor standards + daily capacity calendar
+
+Resource linkage
+- Work-order required hours = order quantity x SKU/route unit labor hours
+- Production-area loading = remaining work-order hours / daily available resource hours
+- Unavailable calendar dates do not provide capacity
+- Finite simulation uses unit labor standards and the capacity availability calendar
+
+Responsive layout (1440px test viewport)
+- Work-order import horizontal overflow: 0
+- Labor management horizontal overflow: 0
+- Capacity management horizontal overflow: 0
+- Production status horizontal overflow: 0

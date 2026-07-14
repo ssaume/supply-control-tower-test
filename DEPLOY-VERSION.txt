@@ -1,3 +1,3 @@
-Build 2026.07.14-ZERO10
-Assets: styles-v20260714-zero10.css / app-v20260714-zero10.js
-Data mode: master data only; all transaction data starts empty
+Build 2026.07.14-RESOURCE11
+Asset CSS: styles-v20260714-resource11.css
+Asset JS: app-v20260714-resource11.js

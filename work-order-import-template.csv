@@ -1,0 +1,3 @@
+kind,sku,factory,routeKey,resourceId,qty,startDate,dueDate,status,progress,demandEventId
+內製工單,UPS-100,TW01,assembly,ASM-01,1000,2026-07-15,2026-07-25,待開工,0,
+委外工單,UPS-100,CN01,smt,SMT-01,1000,2026-07-15,2026-07-20,執行中,35,
