@@ -1,0 +1,20 @@
+PASS - HTML引用ZERO10 CSS
+PASS - HTML引用ZERO10 JS
+PASS - HTML顯示ZERO10 Build
+PASS - 初始需求事件為空
+PASS - 初始追蹤資料為空
+PASS - 事件使用全新空白儲存鍵
+PASS - 需求使用全新空白儲存鍵
+PASS - 追蹤使用全新空白儲存鍵
+PASS - 新需求預設沒有庫存與在製
+PASS - 沒有需求時產能Loading為0
+PASS - 履行展開區空白點擊可清除聚焦
+PASS - 站點生態圖空白點擊可清除聚焦
+PASS - JavaScript語法檢查通過
+PASS - index.html存在
+PASS - styles-v20260714-zero10.css存在
+PASS - app-v20260714-zero10.js存在
+PASS - README.md存在
+PASS - DEPLOY-VERSION.txt存在
+PASS - demand-import-template.csv存在
+PASS - .nojekyll存在
