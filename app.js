@@ -303,7 +303,7 @@ const state={
   productionFactory:'TW01',productionHorizon:14,productionResource:'all',
   demandSource:'all',demandStatus:'all',demandHorizon:'all',shipmentTrade:'all',shipmentTransport:'all',shipmentStatus:'all',
   expandedDemandId:'',expandedShipmentId:'',selectedWorkOrderByEvent:{},selectedFulfillmentByEvent:{},fulfillmentViewMode:'tile',
-  routeEventId:baseDemandEvents.find(x=>x.source==='客戶PO')?.id||baseDemandEvents[0]?.id||'',
+  routeEventId:baseDemandEvents.find(x=>x.source==='客戶PO')?.id||baseDemandEvents[0]?.id||'',routeViewMode:'sequence',
   networkProduct:'all',networkSku:'all',networkRelation:'all',
   events:loadStored('ct-events-v4',structuredClone(baseEvents)),
   demandEvents:loadStored('ct-demand-events-v2',structuredClone(baseDemandEvents)),
@@ -363,12 +363,13 @@ function setupInteractions(){
   $('#shipmentTransportFilter').addEventListener('change',e=>{state.shipmentTransport=e.target.value;renderShipment();});
   $('#shipmentStatusFilter').addEventListener('change',e=>{state.shipmentStatus=e.target.value;renderShipment();});
   $('#routingEventSelect').addEventListener('change',e=>{state.routeEventId=e.target.value;renderRouting();});
+  $('#routingViewToggle').addEventListener('click',e=>{const b=e.target.closest('[data-route-view]');if(!b)return;state.routeViewMode=b.dataset.routeView;renderRouting();});
   $('#productionFactorySelect').addEventListener('change',e=>{state.productionFactory=e.target.value;renderProduction();});
   $('#productionHorizonSelect').addEventListener('change',e=>{state.productionHorizon=Number(e.target.value);renderProduction();});
   $('#productionResourceFilter').addEventListener('change',e=>{state.productionResource=e.target.value;renderProduction();});
   $('#resetDemo').addEventListener('click',()=>{
     clearStored(['ct-events-v3','ct-events-v4','ct-demand-events-v1','ct-demand-events-v2','ct-tracking-v3','ct-commits-v3','ct-decisions-v3']);
-    state.events=structuredClone(baseEvents);state.demandEvents=structuredClone(baseDemandEvents);state.tracking=structuredClone(trackingBase);state.commits={};state.decisions={};state.selectedEventId=baseEvents[0].id;state.selectedScenario=null;state.expandedDemandId='';state.expandedShipmentId='';state.selectedWorkOrderByEvent={};state.selectedFulfillmentByEvent={};state.fulfillmentViewMode='tile';state.routeEventId=baseDemandEvents.find(x=>x.source==='客戶PO')?.id||baseDemandEvents[0]?.id||'';renderAll();toast('示範資料已重設');
+    state.events=structuredClone(baseEvents);state.demandEvents=structuredClone(baseDemandEvents);state.tracking=structuredClone(trackingBase);state.commits={};state.decisions={};state.selectedEventId=baseEvents[0].id;state.selectedScenario=null;state.expandedDemandId='';state.expandedShipmentId='';state.selectedWorkOrderByEvent={};state.selectedFulfillmentByEvent={};state.fulfillmentViewMode='tile';state.routeEventId=baseDemandEvents.find(x=>x.source==='客戶PO')?.id||baseDemandEvents[0]?.id||'';state.routeViewMode='sequence';renderAll();toast('示範資料已重設');
   });
 }
 function setupNetworkControls(){
@@ -719,9 +720,21 @@ function routeMiniItem(item,event,type){
   const isWork=type==='work';
   return `<div class="route-supply-item ${isWork&&item.kind==='委外工單'?'outsource':isWork?'work':'purchase'}"><div><span>${isWork?item.kind:'採購 PO'}</span><strong>${item.item}</strong><small>${item.id}・${isWork?plantLabel(item.plant):item.vendor}</small></div><div><strong>${formatDate(item.due)}</strong><small>${Math.round(item.progress)}%</small></div></div>`;
 }
+function routeNetworkItem(item,type){
+  const isWork=type==='work';
+  const kind=isWork?(item.kind==='委外工單'?'outsource':'work'):'purchase';
+  return `<div class="route-network-input ${kind}"><span>${isWork?item.kind:'採購 PO'}</span><strong>${item.item}</strong><small>${item.id}</small><em>${isWork?plantLabel(item.plant):item.vendor}・${formatDate(item.due)}・${Math.round(item.progress)}%</em></div>`;
+}
+function renderRouteNetwork(stages,event){
+  return `<div class="route-network-scroll"><div class="route-network-header"><span class="route-endpoint start">途程起點</span><strong>${event.product}｜${event.sku}</strong><span class="route-endpoint end">途程終點</span></div><div class="route-network-track">${stages.map((stage,i)=>{
+    const inputs=[...stage.works.map(x=>routeNetworkItem(x,'work')),...stage.supplies.map(x=>routeNetworkItem(x,x.id.startsWith('PO-')?'purchase':'work'))].join('');
+    return `<section class="route-network-stage ${stage.risk?'risk':''}" data-stage="${stage.key}"><div class="route-network-node"><div class="route-network-index">${String(i+1).padStart(2,'0')}</div><div class="route-network-node-head"><span>${stage.start} → ${stage.due}</span>${stage.risk?'<b>齊套風險</b>':'<b class="ok">正常</b>'}</div><h3>${stage.name}</h3><p>${plantLabel(stage.plant)}</p><small>${stage.resource}</small><div class="route-network-progress"><i style="width:${Math.min(100,stage.progress)}%"></i></div><footer><span>${Math.round(stage.progress)}%</span><span>${stage.works.length} 工單・${stage.supplies.length} 供給</span></footer></div>${i<stages.length-1?'<div class="route-network-arrow" aria-hidden="true"><i></i><b>›</b></div>':''}<div class="route-network-feed"><h4>途程投入</h4>${inputs||'<div class="route-network-empty">無額外工單或採購供給</div>'}</div></section>`;
+  }).join('')}</div></div>`;
+}
+
 function renderRouting(){
   const options=routeEligibleEvents();
-  if(!options.length){$('#routingEventSelect').innerHTML='';$('#routingKpis').innerHTML='';$('#routingContext').innerHTML='<div class="empty-state">目前範圍沒有可呈現的需求事件</div>';$('#productionSupplyRoute').innerHTML='';return;}
+  if(!options.length){$('#routingEventSelect').innerHTML='';$('#routingKpis').innerHTML='';$('#routingContext').innerHTML='<div class="empty-state">目前範圍沒有可呈現的需求事件</div>';$('#productionSupplyRoute').innerHTML='';$('#productionSupplyNetwork').innerHTML='';return;}
   if(!options.some(x=>x.id===state.routeEventId))state.routeEventId=options[0].id;
   const event=options.find(x=>x.id===state.routeEventId)||options[0];
   $('#routingEventSelect').innerHTML=options.map(x=>`<option value="${x.id}">${x.id}｜${x.source}｜${x.product} ${x.sku}｜${formatDate(x.demandDate)}</option>`).join('');
@@ -741,6 +754,10 @@ function renderRouting(){
     const supplyItems=stage.supplies.map(x=>routeMiniItem(x,event,x.id.startsWith('PO-')?'purchase':'work')).join('');
     return `<article class="route-stage ${stage.risk?'risk':''}"><div class="route-stage-axis"><span>${String(i+1).padStart(2,'0')}</span>${i<stages.length-1?'<i></i>':''}</div><div class="route-stage-card"><div class="route-stage-head"><div><span class="route-stage-kicker">${stage.start} → ${stage.due}</span><h3>${stage.name}</h3><p>${stage.note}</p></div><div class="route-stage-status">${stage.risk?'<span class="tag danger">齊套風險</span>':fulfillmentStatusTag(orderStatus(stage.progress,false,false))}<strong>${Math.round(stage.progress)}%</strong></div></div><div class="route-stage-meta"><span>執行地點<strong>${plantLabel(stage.plant)}</strong></span><span>產能資源<strong>${stage.resource}</strong></span><span>最晚完成<strong>${formatDateFull(stage.due)}</strong></span></div><div class="route-stage-content"><section><h4>承接工單</h4><div class="route-supply-list">${workItems||'<div class="route-empty">此站點以檢驗、倉儲或包裝作業為主</div>'}</div></section><section><h4>投入前必須齊套</h4><div class="route-supply-list">${supplyItems||'<div class="route-empty">無額外採購或下階工單</div>'}</div></section></div></div></article>`;
   }).join('');
+  $('#productionSupplyNetwork').innerHTML=renderRouteNetwork(stages,event);
+  $$('#routingViewToggle [data-route-view]').forEach(b=>b.classList.toggle('active',b.dataset.routeView===state.routeViewMode));
+  $('#productionSupplyRoute').hidden=state.routeViewMode!=='sequence';
+  $('#productionSupplyNetwork').hidden=state.routeViewMode!=='network';
 }
 
 function demandScopeRows(){

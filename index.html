@@ -442,11 +442,18 @@
               <div>
                 <p class="eyebrow">ROUTE SEQUENCE & MATERIAL FEED</p>
                 <h2>生產途程與站點物料供給</h2>
-                <p class="muted">依生產先後由上往下排列。每一道途程會列出承接工單、執行工廠／資源、完成進度，以及必須在該站點前齊套的採購 PO 或下階工單。</p>
+                <p class="muted">途程卡片依生產先後由上往下排列；網路圖展開則由左側起點一路連到右側終點。每一道途程會列出承接工單、執行工廠／資源、完成進度，以及必須在該站點前齊套的採購 PO 或下階工單。</p>
               </div>
-              <div class="route-legend"><span><i class="route-work"></i>生產工單</span><span><i class="route-outsource"></i>委外／友廠</span><span><i class="route-purchase"></i>採購供給</span></div>
+              <div class="routing-view-actions">
+                <div class="segmented-control route-view-toggle" id="routingViewToggle" aria-label="生產供應途程呈現方式">
+                  <button class="active" data-route-view="sequence">途程卡片</button>
+                  <button data-route-view="network">網路圖展開</button>
+                </div>
+                <div class="route-legend"><span><i class="route-work"></i>生產工單</span><span><i class="route-outsource"></i>委外／友廠</span><span><i class="route-purchase"></i>採購供給</span></div>
+              </div>
             </div>
             <div id="productionSupplyRoute" class="production-supply-route"></div>
+            <div id="productionSupplyNetwork" class="production-supply-network" hidden></div>
           </article>
         </section>
 

@@ -820,3 +820,54 @@ button.order-info-tile:not(.purchase-info-tile) { border-left:4px solid #4e8dbd;
   .route-stage-status { justify-items:start;grid-auto-flow:column;justify-content:start;align-items:center; }
   .route-stage-meta,.route-stage-content { grid-template-columns:1fr; }
 }
+
+/* Horizontal routing network view */
+.routing-view-actions { display:grid;justify-items:end;gap:9px; }
+.route-view-toggle { white-space:nowrap; }
+.production-supply-network[hidden],.production-supply-route[hidden] { display:none!important; }
+.production-supply-network { margin-top:2px; }
+.route-network-scroll { overflow-x:auto;padding:4px 2px 18px;scrollbar-color:#9db4c5 #edf3f7; }
+.route-network-header { min-width:1260px;display:grid;grid-template-columns:150px 1fr 150px;align-items:center;margin-bottom:12px;padding:0 8px; }
+.route-network-header > strong { text-align:center;color:var(--navy);font-size:11px; }
+.route-endpoint { display:inline-flex;align-items:center;justify-content:center;padding:7px 12px;border-radius:999px;font-size:8px;font-weight:900;letter-spacing:.04em; }
+.route-endpoint.start { justify-self:start;background:#e8f3fa;color:#286084;border:1px solid #b7d3e6; }
+.route-endpoint.end { justify-self:end;background:#e9f5ef;color:#2b6c50;border:1px solid #b9ddca; }
+.route-network-track { min-width:1260px;display:grid;grid-template-columns:repeat(6,minmax(175px,1fr));gap:18px;align-items:start;padding:0 8px; }
+.route-network-stage { position:relative;min-width:0; }
+.route-network-node { position:relative;z-index:3;min-height:178px;padding:13px;border:1px solid #cfdce5;border-top:4px solid #4e8dbd;border-radius:13px;background:#fff;box-shadow:0 6px 16px rgba(36,68,91,.08); }
+.route-network-stage.risk .route-network-node { border-color:#dca9a5;border-top-color:#c95f58;background:#fffafa; }
+.route-network-index { position:absolute;top:-13px;left:12px;display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:#315f82;color:#fff;font-size:8px;font-weight:900;box-shadow:0 0 0 4px #eef4f8; }
+.route-network-node-head { display:flex;align-items:center;justify-content:space-between;gap:6px;margin:4px 0 10px 30px; }
+.route-network-node-head span { color:#557991;font-size:7px;font-weight:900; }
+.route-network-node-head b { padding:3px 6px;border-radius:999px;background:#fde9e7;color:#9f3f39;font-size:7px; }
+.route-network-node-head b.ok { background:#e6f4ec;color:#2f7456; }
+.route-network-node h3 { margin:0 0 8px;color:var(--navy);font-size:13px;line-height:1.35; }
+.route-network-node p { margin:0;color:var(--ink);font-size:9px;font-weight:900; }
+.route-network-node > small { display:block;margin:3px 0 12px;color:var(--muted);font-size:8px; }
+.route-network-progress { height:6px;overflow:hidden;border-radius:999px;background:#e7eef3; }
+.route-network-progress i { display:block;height:100%;border-radius:inherit;background:#4e8dbd; }
+.route-network-stage.risk .route-network-progress i { background:#c95f58; }
+.route-network-node footer { display:flex;justify-content:space-between;gap:8px;margin-top:7px;color:var(--muted);font-size:7px;font-weight:800; }
+.route-network-arrow { position:absolute;z-index:2;top:78px;left:calc(100% - 1px);width:30px;height:24px;display:flex;align-items:center; }
+.route-network-arrow i { width:24px;height:2px;background:#87a7bd; }
+.route-network-arrow b { margin-left:-2px;color:#5b829d;font-size:24px;line-height:1; }
+.route-network-feed { position:relative;margin-top:22px;padding-top:18px;display:grid;gap:7px; }
+.route-network-feed::before { content:"";position:absolute;top:0;left:50%;width:2px;height:15px;background:#b8cbd8;transform:translateX(-50%); }
+.route-network-feed::after { content:"";position:absolute;top:13px;left:14px;right:14px;height:2px;background:#d5e0e7; }
+.route-network-feed h4 { position:relative;z-index:2;justify-self:center;margin:-30px 0 2px;padding:4px 8px;border-radius:999px;background:#eef4f8;color:#4e6f85;font-size:7px;font-weight:900; }
+.route-network-input { position:relative;z-index:2;padding:8px 9px;border:1px solid #dce5eb;border-left:4px solid #4e8dbd;border-radius:9px;background:#fff;box-shadow:0 2px 6px rgba(36,68,91,.04); }
+.route-network-input.outsource { border-left-color:#d39c3f;background:#fffbf4; }
+.route-network-input.purchase { border-left-color:#55a17d;background:#f7fcf9; }
+.route-network-input span,.route-network-input strong,.route-network-input small,.route-network-input em { display:block; }
+.route-network-input span { color:var(--muted);font-size:6px;font-weight:900; }
+.route-network-input strong { margin-top:2px;color:var(--ink);font-size:8px;line-height:1.3; }
+.route-network-input small { margin-top:2px;color:#4f6e83;font-size:7px; }
+.route-network-input em { margin-top:3px;color:var(--muted);font-size:6px;font-style:normal;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+.route-network-empty { position:relative;z-index:2;padding:11px;border:1px dashed #cbd8e1;border-radius:9px;background:#fafcfd;color:var(--muted);font-size:7px;text-align:center; }
+
+@media (max-width:760px){
+  .routing-view-actions { justify-items:start;width:100%; }
+  .route-network-header { min-width:1260px; }
+  .route-network-track { min-width:1260px;grid-template-columns:repeat(6,minmax(175px,1fr));gap:18px; }
+  .route-network-node { min-height:170px; }
+}
