@@ -142,7 +142,7 @@
               <div>
                 <p class="eyebrow">DEMAND EVENT OVERVIEW</p>
                 <h2>BY 廠區需求事件</h2>
-                <p class="muted">需求依需求日期拆分成獨立事件；每筆保留來源、狀態、來源批次與是否已轉內部 SO。</p>
+                <p class="muted">需求依需求日期拆分成獨立事件，並保留來源鏈；只有客戶 PO 具備正式客戶與目的地，也只有客戶 PO 能轉內部 SO。</p>
               </div>
               <div class="demand-filters">
                 <label><span>來源</span><select id="demandSourceFilter">
@@ -158,6 +158,9 @@
                   <option value="待整合">待整合</option>
                   <option value="待確認">待確認</option>
                   <option value="已確認">已確認</option>
+                  <option value="已轉換">已轉換</option>
+                  <option value="部分消耗">部分消耗</option>
+                  <option value="已被PO消耗">已被 PO 消耗</option>
                   <option value="已轉內部SO">已轉內部 SO</option>
                   <option value="已取消">已取消</option>
                 </select></label>
@@ -178,7 +181,7 @@
             </div>
             <div class="table-wrap demand-table-wrap">
               <table class="demand-table">
-                <thead><tr><th>需求事件／來源批次</th><th>需求日期</th><th>來源</th><th>狀態</th><th>客戶／用途</th><th>產品／成品料號</th><th>需求量</th><th>內部 SO</th><th>操作</th></tr></thead>
+                <thead><tr><th>需求事件／來源批次</th><th>需求日期</th><th>來源</th><th>狀態</th><th>事件關係鏈</th><th>客戶／用途</th><th>產品／成品料號</th><th>需求量</th><th>內部 SO</th><th>操作</th></tr></thead>
                 <tbody id="demandEventTable"></tbody>
               </table>
             </div>
@@ -194,13 +197,22 @@
               <div>
                 <p class="eyebrow">INTERNAL SO & SHIPMENT</p>
                 <h2>內部 SO 出貨總覽</h2>
-                <p class="muted">僅列出需求事件中已轉成內部 SO 的項目，依出貨工廠與目的地區分內銷、外銷。</p>
+                <p class="muted">僅列出「客戶 PO」且已轉成內部 SO 的需求事件；只有正式客戶 PO 才具備內外銷、客戶、目的地與運輸資訊。</p>
               </div>
               <div class="shipment-filters">
                 <label><span>銷售型態</span><select id="shipmentTradeFilter">
                   <option value="all">內外銷全部</option>
                   <option value="內銷">內銷</option>
                   <option value="外銷">外銷</option>
+                </select></label>
+                <label><span>運輸模式</span><select id="shipmentTransportFilter">
+                  <option value="all">全部運輸模式</option>
+                  <option value="陸運">陸運</option>
+                  <option value="海運">海運</option>
+                  <option value="空運">空運</option>
+                  <option value="快遞">快遞</option>
+                  <option value="鐵路">鐵路</option>
+                  <option value="複合運輸">複合運輸</option>
                 </select></label>
                 <label><span>出貨狀態</span><select id="shipmentStatusFilter">
                   <option value="all">全部狀態</option>
@@ -221,7 +233,7 @@
             </div>
             <div class="table-wrap">
               <table class="shipment-table">
-                <thead><tr><th>內部 SO／需求事件</th><th>工廠</th><th>內外銷</th><th>客戶／目的地</th><th>產品／料號</th><th>SO 數量</th><th>需求日期</th><th>計畫出貨</th><th>貿易條件</th><th>狀態</th></tr></thead>
+                <thead><tr><th>內部 SO／需求事件</th><th>工廠</th><th>內外銷</th><th>客戶／目的地</th><th>產品／料號</th><th>SO 數量</th><th>需求日期</th><th>計畫出貨</th><th>運輸模式</th><th>貿易條件</th><th>狀態</th></tr></thead>
                 <tbody id="shipmentTable"></tbody>
               </table>
             </div>

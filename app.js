@@ -97,39 +97,112 @@ function productForFactory(factory,index=0){
 }
 
 function buildDemandEvents(){
-  const sources = ['客戶預測','客戶PO','內部預測','計畫庫存','緊急詢單','客戶預測'];
-  const statusCycle = ['待整合','待確認','已確認','已轉內部SO','已確認','已轉內部SO'];
-  const events = [];
-  let serial = 1;
-  allFactories.forEach((factory,fi) => {
-    sources.forEach((source,si) => {
-      const item = productForFactory(factory,fi+si);
-      const localCustomer = customers.find(c => c.region===factoryLookup[factory].region);
-      const exportCustomer = customers[(fi*2+si+6)%customers.length];
-      const isInternal = ['內部預測','計畫庫存'].includes(source);
-      const customer = isInternal ? (source==='計畫庫存'?'區域成品倉':'內部S&OP預測') : (si%3===0?exportCustomer:localCustomer);
-      const customerName = typeof customer==='string'?customer:customer.name;
-      const destRegion = isInternal?factoryLookup[factory].region:customer.region;
-      const country = isInternal?factoryLookup[factory].regionName:customer.country;
-      const city = isInternal?factoryName(factory):customer.city;
-      const batchType = source==='客戶預測'?'FCST':source==='客戶PO'?'PO':source==='內部預測'?'IFC':source==='計畫庫存'?'STK':'RFQ';
-      const batchId = source==='客戶預測' ? `FCST-${factory}-001` : `${batchType}-${factory}-${String(si+1).padStart(3,'0')}`;
-      const demandDate = shiftDate('2026-07-22', fi*2 + si*6 + (si===5?14:0));
-      let status = statusCycle[(fi+si)%statusCycle.length];
-      if(source==='計畫庫存' && status==='已轉內部SO') status='已確認';
-      if(source==='緊急詢單' && fi%4===0) status='待確認';
-      const qty = 600 + ((fi+3)*(si+5)*173)%8400;
-      const id = `DE-${String(serial++).padStart(4,'0')}`;
-      events.push({
-        id,batchId,region:factoryLookup[factory].region,factory,source,status,
-        demandDate,customer:customerName,destinationRegion:destRegion,destinationCountry:country,destinationCity:city,
-        productKey:item.productKey,product:item.product,sku:item.sku,qty,priority:source==='緊急詢單'?1:source==='客戶PO'?2:3,
-        createdDate:shiftDate(TODAY,-((fi+si)%9)),
-        soNo:status==='已轉內部SO'?`SO-${factory}-${String(88000+serial).slice(-5)}`:'',
-        shippingStatus:status==='已轉內部SO'?['備料中','待出貨','已出貨','延遲風險'][(fi+si)%4]:'',
-        incoterm:destRegion===factoryLookup[factory].region?'DAP':(['FOB','CIF','DDP','FCA'][(fi+si)%4])
-      });
+  const events=[];
+  let serial=1;
+  const addEvent=data=>{
+    const event={
+      id:`DE-${String(serial++).padStart(4,'0')}`,
+      parentEventId:'',rootEventId:'',childEventIds:[],originMode:'',purpose:'',remainingQty:null,
+      customer:'',destinationRegion:'',destinationCountry:'',destinationCity:'',soNo:'',shippingStatus:'',incoterm:'',transportMode:'',
+      ...data
+    };
+    event.rootEventId=event.rootEventId||event.id;
+    events.push(event);
+    return event;
+  };
+  const link=(parent,child)=>{parent.childEventIds=[...(parent.childEventIds||[]),child.id];child.parentEventId=parent.id;child.rootEventId=parent.rootEventId||parent.id;};
+  const poStatus=(fi,seed)=>(fi+seed)%3===0?'已轉內部SO':'已確認';
+  const assignSo=(event,fi,seed)=>{
+    if(event.status!=='已轉內部SO')return;
+    event.soNo=`SO-${event.factory}-${String(88000+fi*20+seed).slice(-5)}`;
+    event.shippingStatus=['備料中','待出貨','已出貨','延遲風險'][(fi+seed)%4];
+  };
+  const makeCustomerPo=({factory,fi,parent,item,customer,qty,demandDate,originMode,seed})=>{
+    const po=addEvent({
+      batchId:`PO-${factory}-${String(fi*10+seed+1).padStart(3,'0')}`,
+      region:factoryLookup[factory].region,factory,source:'客戶PO',status:poStatus(fi,seed),
+      demandDate,customer:customer.name,destinationRegion:customer.region,destinationCountry:customer.country,destinationCity:customer.city,
+      productKey:item.productKey,product:item.product,sku:item.sku,qty,priority:originMode==='緊急詢單轉單'?1:2,
+      createdDate:shiftDate(TODAY,-((fi+seed)%7)),originMode,purpose:'正式客戶訂單'
     });
+    link(parent,po);assignSo(po,fi,seed);return po;
+  };
+
+  allFactories.forEach((factory,fi)=>{
+    const region=factoryLookup[factory].region;
+    const localCustomer=customers.find(c=>c.region===region);
+    const exportCustomer=customers[(fi*2+6)%customers.length];
+    const customerA=fi%2===0?localCustomer:exportCustomer;
+    const customerB=customers[(fi*3+7)%customers.length];
+    const customerC=customers[(fi*5+8)%customers.length];
+
+    // 關係鏈一：客戶預測 → 客戶 PO（完整轉換）
+    const itemA=productForFactory(factory,fi);
+    const qtyA=1800+((fi+2)*617)%7600;
+    const dateA=shiftDate('2026-07-24',fi*2);
+    const forecastConverted=fi%4!==1;
+    const forecast=addEvent({
+      batchId:`FCST-${factory}-001`,region,factory,source:'客戶預測',status:forecastConverted?'已轉換':(fi%2?'已確認':'待確認'),
+      demandDate:dateA,productKey:itemA.productKey,product:itemA.product,sku:itemA.sku,qty:qtyA,priority:3,
+      createdDate:shiftDate(TODAY,-(fi%8)),purpose:'客戶需求預測（尚未形成正式訂單）',
+      prospectCustomer:customerA.name,prospectRegion:customerA.region,prospectCountry:customerA.country,prospectCity:customerA.city
+    });
+    if(forecastConverted)makeCustomerPo({factory,fi,parent:forecast,item:itemA,customer:customerA,qty:qtyA,demandDate:dateA,originMode:'預測完整轉換',seed:1});
+
+    // 關係鏈二：內部預測 → 計畫庫存
+    const itemB=productForFactory(factory,fi+2);
+    const qtyB=1200+((fi+4)*431)%6200;
+    const dateB=shiftDate('2026-08-05',fi*2+4);
+    const stockCreated=fi%5!==2;
+    const internalForecast=addEvent({
+      batchId:`IFC-${factory}-001`,region,factory,source:'內部預測',status:stockCreated?'已轉換':'已確認',
+      demandDate:dateB,productKey:itemB.productKey,product:itemB.product,sku:itemB.sku,qty:qtyB,priority:3,
+      createdDate:shiftDate(TODAY,-((fi+2)%8)),purpose:'S&OP內部需求預測'
+    });
+    if(stockCreated){
+      const stock=addEvent({
+        batchId:`STK-${factory}-001`,region,factory,source:'計畫庫存',status:'已確認',
+        demandDate:dateB,productKey:itemB.productKey,product:itemB.product,sku:itemB.sku,qty:qtyB,remainingQty:qtyB,priority:3,
+        createdDate:shiftDate(TODAY,-((fi+1)%7)),originMode:'內部預測轉庫存',purpose:'區域成品安全庫存'
+      });
+      link(internalForecast,stock);
+    }
+
+    // 關係鏈三：緊急詢單 → 客戶 PO
+    const itemC=productForFactory(factory,fi+4);
+    const qtyC=700+((fi+5)*293)%3800;
+    const dateC=shiftDate('2026-07-20',fi+3);
+    const inquiryConverted=fi%4!==2;
+    const inquiry=addEvent({
+      batchId:`RFQ-${factory}-001`,region,factory,source:'緊急詢單',status:inquiryConverted?'已轉換':'已確認',
+      demandDate:dateC,productKey:itemC.productKey,product:itemC.product,sku:itemC.sku,qty:qtyC,priority:1,
+      createdDate:shiftDate(TODAY,-(fi%5)),purpose:'緊急交期與數量可行性詢問',
+      prospectCustomer:customerB.name,prospectRegion:customerB.region,prospectCountry:customerB.country,prospectCity:customerB.city
+    });
+    if(inquiryConverted)makeCustomerPo({factory,fi,parent:inquiry,item:itemC,customer:customerB,qty:qtyC,demandDate:dateC,originMode:'緊急詢單轉單',seed:3});
+
+    // 關係鏈四：內部預測 → 計畫庫存 → 客戶 PO（消耗計畫庫存）
+    const itemD=productForFactory(factory,fi+6);
+    const qtyD=2400+((fi+7)*367)%7000;
+    const dateD=shiftDate('2026-08-18',fi*2+5);
+    const internalForecast2=addEvent({
+      batchId:`IFC-${factory}-002`,region,factory,source:'內部預測',status:'已轉換',
+      demandDate:dateD,productKey:itemD.productKey,product:itemD.product,sku:itemD.sku,qty:qtyD,priority:3,
+      createdDate:shiftDate(TODAY,-((fi+4)%8)),purpose:'區域補庫預測'
+    });
+    const consumeStock=fi%5!==3;
+    const stock2=addEvent({
+      batchId:`STK-${factory}-002`,region,factory,source:'計畫庫存',status:consumeStock?'部分消耗':'已確認',
+      demandDate:dateD,productKey:itemD.productKey,product:itemD.product,sku:itemD.sku,qty:qtyD,remainingQty:qtyD,priority:3,
+      createdDate:shiftDate(TODAY,-((fi+3)%7)),originMode:'內部預測轉庫存',purpose:'可承接客戶PO的計畫庫存'
+    });
+    link(internalForecast2,stock2);
+    if(consumeStock){
+      const consumeQty=fi%2===0?qtyD:Math.round(qtyD*.65);
+      stock2.remainingQty=qtyD-consumeQty;
+      stock2.status=stock2.remainingQty===0?'已被PO消耗':'部分消耗';
+      makeCustomerPo({factory,fi,parent:stock2,item:itemD,customer:customerC,qty:consumeQty,demandDate:shiftDate(dateD,-(fi%3)),originMode:'計畫庫存消耗',seed:5});
+    }
   });
   return events;
 }
@@ -227,10 +300,10 @@ function clearStored(keys){try{keys.forEach(k=>localStorage.removeItem(k));}catc
 const state={
   region:'ALL',factory:'ALL',selectedEventId:baseEvents[0].id,selectedTaskId:'B01',selectedScenario:null,
   eventSeverity:'all',eventStatus:'all',trackingFilter:'all',simDimension:'product',simulated:null,
-  demandSource:'all',demandStatus:'all',demandHorizon:'all',shipmentTrade:'all',shipmentStatus:'all',
+  demandSource:'all',demandStatus:'all',demandHorizon:'all',shipmentTrade:'all',shipmentTransport:'all',shipmentStatus:'all',
   networkProduct:'all',networkSku:'all',networkRelation:'all',
   events:loadStored('ct-events-v3',structuredClone(baseEvents)),
-  demandEvents:loadStored('ct-demand-events-v1',structuredClone(baseDemandEvents)),
+  demandEvents:loadStored('ct-demand-events-v2',structuredClone(baseDemandEvents)),
   tracking:loadStored('ct-tracking-v3',structuredClone(trackingBase)),
   commits:loadStored('ct-commits-v3',{}),decisions:loadStored('ct-decisions-v3',{})
 };
@@ -242,7 +315,7 @@ const money=n=>`${fmt(n)} 萬`;
 const sevLabel={red:'紅燈',yellow:'黃燈',green:'綠燈'};
 const sevTag=s=>`<span class="tag ${s==='red'?'danger':s==='yellow'?'warning':'success'}"><i class="signal ${s}"></i>${sevLabel[s]}</span>`;
 const sourceClass={'客戶預測':'info','內部預測':'neutral','客戶PO':'success','計畫庫存':'warning','緊急詢單':'danger'};
-const statusClass={'待整合':'neutral','待確認':'warning','已確認':'info','已轉內部SO':'success','已取消':'danger'};
+const statusClass={'待整合':'neutral','待確認':'warning','已確認':'info','已轉換':'success','部分消耗':'warning','已被PO消耗':'neutral','已轉內部SO':'success','已取消':'danger'};
 
 function init(){setupFilters();setupNavigation();setupInteractions();setupNetworkControls();renderAll();setupTour();}
 
@@ -284,9 +357,10 @@ function setupInteractions(){
   $('#demandStatusFilter').addEventListener('change',e=>{state.demandStatus=e.target.value;renderDemand();});
   $('#demandHorizonFilter').addEventListener('change',e=>{state.demandHorizon=e.target.value;renderDemand();});
   $('#shipmentTradeFilter').addEventListener('change',e=>{state.shipmentTrade=e.target.value;renderShipment();});
+  $('#shipmentTransportFilter').addEventListener('change',e=>{state.shipmentTransport=e.target.value;renderShipment();});
   $('#shipmentStatusFilter').addEventListener('change',e=>{state.shipmentStatus=e.target.value;renderShipment();});
   $('#resetDemo').addEventListener('click',()=>{
-    clearStored(['ct-events-v3','ct-demand-events-v1','ct-tracking-v3','ct-commits-v3','ct-decisions-v3']);
+    clearStored(['ct-events-v3','ct-demand-events-v1','ct-demand-events-v2','ct-tracking-v3','ct-commits-v3','ct-decisions-v3']);
     state.events=structuredClone(baseEvents);state.demandEvents=structuredClone(baseDemandEvents);state.tracking=structuredClone(trackingBase);state.commits={};state.decisions={};state.selectedEventId=baseEvents[0].id;state.selectedScenario=null;renderAll();toast('示範資料已重設');
   });
 }
@@ -354,39 +428,115 @@ function renderDemand(){
   const grouped=Object.groupBy?Object.groupBy(rows,r=>r.factory):rows.reduce((a,r)=>((a[r.factory]??=[]).push(r),a),{});
   $('#demandEventTable').innerHTML=Object.entries(grouped).map(([factory,items])=>{
     const total=items.reduce((s,x)=>s+x.qty,0);
-    const header=`<tr class="factory-group-row"><td colspan="9"><div><strong>${factory}｜${factoryName(factory)}</strong><span>${items.length}筆事件・${fmt(total)}件</span></div></td></tr>`;
+    const header=`<tr class="factory-group-row"><td colspan="10"><div><strong>${factory}｜${factoryName(factory)}</strong><span>${items.length}筆事件・${fmt(total)}件</span></div></td></tr>`;
     return header+items.map(demandRow).join('');
-  }).join('')||'<tr><td colspan="9">沒有符合條件的需求事件</td></tr>';
+  }).join('')||'<tr><td colspan="10">沒有符合條件的需求事件</td></tr>';
   $$('.demand-action').forEach(b=>b.addEventListener('click',()=>handleDemandAction(b.dataset.id,b.dataset.action)));
 }
+function demandChain(d){
+  const chain=[];const seen=new Set();let cursor=d;
+  while(cursor&&!seen.has(cursor.id)){seen.add(cursor.id);chain.unshift(cursor);cursor=cursor.parentEventId?state.demandEvents.find(x=>x.id===cursor.parentEventId):null;}
+  return chain;
+}
+function relationChainHtml(d){
+  const chain=demandChain(d);const sources=chain.map(x=>x.source);
+  const children=(d.childEventIds||[]).map(id=>state.demandEvents.find(x=>x.id===id)).filter(Boolean);
+  const full=[...sources,...children.map(x=>x.source)].filter((x,i,a)=>i===0||x!==a[i-1]);
+  const ids=[...chain.map(x=>x.id),...children.map(x=>x.id)].filter((x,i,a)=>a.indexOf(x)===i);
+  return `<div class="chain-cell"><strong>${full.join(' → ')||d.source}</strong><span>${d.originMode||'需求來源起點'}</span><small>${ids.join(' → ')}</small></div>`;
+}
+function demandAudienceHtml(d){
+  if(d.source==='客戶PO')return `<strong>${d.customer}</strong><br><span class="event-id">${d.destinationCountry}・${d.destinationCity}</span>`;
+  return `<strong>${d.purpose||'內部規劃用途'}</strong><br><span class="event-id">尚無正式客戶與出貨目的地</span>`;
+}
 function demandRow(d){
-  const action=d.status==='待整合'?['送確認','confirmQueue']:d.status==='待確認'?['確認需求','confirm']:d.status==='已確認'?['轉內部SO','toSo']:d.status==='已轉內部SO'?['查看SO','viewSo']:['—','none'];
-  return `<tr><td><strong>${d.id}</strong><br><span class="event-id">批次 ${d.batchId}</span></td><td><strong>${formatDateFull(d.demandDate)}</strong><br><span class="event-id">建立 ${formatDate(d.createdDate)}</span></td><td><span class="tag ${sourceClass[d.source]}">${d.source}</span></td><td><span class="tag ${statusClass[d.status]}">${d.status}</span></td><td><strong>${d.customer}</strong><br><span class="event-id">${d.destinationCountry}・${d.destinationCity}</span></td><td><strong>${d.product}</strong><br><span class="event-id">${d.sku}</span></td><td><strong>${fmt(d.qty)} 件</strong><br><span class="event-id">P${d.priority}</span></td><td>${d.soNo?`<strong>${d.soNo}</strong>`:'<span class="event-id">尚未建立</span>'}</td><td><button class="action-link demand-action" data-id="${d.id}" data-action="${action[1]}" ${action[1]==='none'?'disabled':''}>${action[0]}</button></td></tr>`;
+  let action=['—','none'];
+  if(d.status==='待整合')action=['送確認','confirmQueue'];
+  else if(d.status==='待確認')action=['確認需求','confirm'];
+  else if(d.status==='已確認'){
+    if(d.source==='客戶預測'||d.source==='緊急詢單')action=['轉客戶PO','toCustomerPo'];
+    else if(d.source==='內部預測')action=['轉計畫庫存','toPlannedStock'];
+    else if(d.source==='計畫庫存')action=['建立PO消耗','consumeStock'];
+    else if(d.source==='客戶PO')action=['轉內部SO','toSo'];
+  }else if(d.source==='客戶PO'&&d.status==='已轉內部SO')action=['查看SO','viewSo'];
+  else if((d.childEventIds||[]).length)action=['查看下游','viewDownstream'];
+  return `<tr><td><strong>${d.id}</strong><br><span class="event-id">批次 ${d.batchId}</span></td><td><strong>${formatDateFull(d.demandDate)}</strong><br><span class="event-id">建立 ${formatDate(d.createdDate)}</span></td><td><span class="tag ${sourceClass[d.source]}">${d.source}</span></td><td><span class="tag ${statusClass[d.status]||'neutral'}">${d.status}</span></td><td>${relationChainHtml(d)}</td><td>${demandAudienceHtml(d)}</td><td><strong>${d.product}</strong><br><span class="event-id">${d.sku}</span></td><td><strong>${fmt(d.qty)} 件</strong>${d.source==='計畫庫存'&&d.remainingQty!==null?`<br><span class="event-id">剩餘 ${fmt(d.remainingQty)} 件</span>`:`<br><span class="event-id">P${d.priority}</span>`}</td><td>${d.soNo?`<strong>${d.soNo}</strong>`:'<span class="event-id">尚未建立</span>'}</td><td><button class="action-link demand-action" data-id="${d.id}" data-action="${action[1]}" ${action[1]==='none'?'disabled':''}>${action[0]}</button></td></tr>`;
+}
+function nextDemandId(){
+  const n=Math.max(0,...state.demandEvents.map(x=>Number((x.id.match(/\d+/)||['0'])[0])));return `DE-${String(n+1).padStart(4,'0')}`;
+}
+function prospectFor(parent){
+  if(parent.prospectCustomer)return {name:parent.prospectCustomer,region:parent.prospectRegion,country:parent.prospectCountry,city:parent.prospectCity};
+  return customers[hashText(parent.id+parent.factory)%customers.length];
+}
+function createDerivedDemandEvent(parent,targetSource){
+  const customer=prospectFor(parent);const id=nextDemandId();
+  const common={id,region:parent.region,factory:parent.factory,demandDate:parent.demandDate,productKey:parent.productKey,product:parent.product,sku:parent.sku,priority:parent.priority,createdDate:TODAY,parentEventId:parent.id,rootEventId:parent.rootEventId||parent.id,childEventIds:[],soNo:'',shippingStatus:'',incoterm:'',transportMode:''};
+  let child;
+  if(targetSource==='計畫庫存'){
+    child={...common,batchId:`STK-${parent.factory}-${String(hashText(id)%999).padStart(3,'0')}`,source:'計畫庫存',status:'已確認',qty:parent.qty,remainingQty:parent.qty,originMode:'內部預測轉庫存',purpose:'區域成品安全庫存',customer:'',destinationRegion:'',destinationCountry:'',destinationCity:''};
+    parent.status='已轉換';
+  }else{
+    const available=parent.source==='計畫庫存'?(parent.remainingQty??parent.qty):parent.qty;
+    const qty=parent.source==='計畫庫存'?Math.max(100,Math.round(available*.6)):parent.qty;
+    const originMode=parent.source==='客戶預測'?'預測完整轉換':parent.source==='緊急詢單'?'緊急詢單轉單':'計畫庫存消耗';
+    child={...common,batchId:`PO-${parent.factory}-${String(hashText(id)%999).padStart(3,'0')}`,source:'客戶PO',status:'已確認',qty,remainingQty:null,originMode,purpose:'正式客戶訂單',customer:customer.name,destinationRegion:customer.region,destinationCountry:customer.country,destinationCity:customer.city,priority:parent.source==='緊急詢單'?1:2};
+    if(parent.source==='計畫庫存'){
+      parent.remainingQty=Math.max(0,available-qty);parent.status=parent.remainingQty===0?'已被PO消耗':'部分消耗';
+    }else parent.status='已轉換';
+  }
+  parent.childEventIds=[...(parent.childEventIds||[]),child.id];state.demandEvents.push(child);return child;
 }
 function handleDemandAction(id,action){
   const d=state.demandEvents.find(x=>x.id===id);if(!d)return;
   if(action==='confirmQueue')d.status='待確認';
   if(action==='confirm')d.status='已確認';
-  if(action==='toSo'){d.status='已轉內部SO';d.soNo=`SO-${d.factory}-${String(90000+hashText(d.id)%9999).slice(-5)}`;d.shippingStatus='待排程';d.incoterm=d.destinationRegion===d.region?'DAP':['FOB','CIF','DDP','FCA'][hashText(d.id)%4];}
-  if(action==='viewSo'){state.shipmentTrade='all';state.shipmentStatus='all';renderShipment();switchView('shipment');toast(`已定位 ${d.soNo}`);return;}
-  persist();renderAll();toast(action==='toSo'?`已建立內部SO：${d.soNo}`:`需求事件已更新為「${d.status}」`);
+  if(action==='toCustomerPo'||action==='consumeStock'){
+    const child=createDerivedDemandEvent(d,'客戶PO');persist();renderAll();toast(`已建立客戶PO事件 ${child.id}（${child.originMode}）`);return;
+  }
+  if(action==='toPlannedStock'){
+    const child=createDerivedDemandEvent(d,'計畫庫存');persist();renderAll();toast(`已建立計畫庫存事件 ${child.id}`);return;
+  }
+  if(action==='toSo'){
+    if(d.source!=='客戶PO'){toast('只有客戶PO可以轉成內部SO');return;}
+    d.status='已轉內部SO';d.soNo=`SO-${d.factory}-${String(90000+hashText(d.id)%9999).slice(-5)}`;d.shippingStatus='待排程';
+    const trade=d.destinationRegion===d.region?'內銷':'外銷';d.incoterm=trade==='內銷'?'DAP':['FOB','CIF','DDP','FCA'][hashText(d.id)%4];d.transportMode=chooseTransportMode(d,trade);
+  }
+  if(action==='viewSo'){state.shipmentTrade='all';state.shipmentTransport='all';state.shipmentStatus='all';renderShipment();switchView('shipment');toast(`已定位 ${d.soNo}`);return;}
+  if(action==='viewDownstream'){
+    const child=state.demandEvents.find(x=>x.id===(d.childEventIds||[])[0]);if(child){state.demandSource=child.source;state.demandStatus='all';renderDemand();toast(`下游事件：${child.id}｜${child.source}`);}return;
+  }
+  persist();renderAll();toast(`需求事件已更新為「${d.status}」`);
 }
 
+function chooseTransportMode(d,trade){
+  if(trade==='內銷')return '陸運';
+  const family=skuLookup[d.sku]?.family||'';
+  const heavy=['電源系統','車用電力電子','電動車動力','充電基礎設施','新能源','環境系統'].includes(family);
+  const urgent=d.originMode==='緊急詢單轉單'||dateDiff(d.demandDate,TODAY)<=14;
+  if(urgent)return '空運';
+  if(d.region==='CN'&&d.destinationRegion==='EU'&&!heavy)return '鐵路';
+  if(['EU','US'].includes(d.destinationRegion))return heavy?'海運':'空運';
+  if(heavy)return hashText(d.id)%3===0?'複合運輸':'海運';
+  return ['空運','快遞','海運'][hashText(d.id)%3];
+}
+function transportLead(mode){return {陸運:2,快遞:3,空運:5,鐵路:12,複合運輸:14,海運:18}[mode]||7;}
+function transportModeTag(mode){const cls=mode==='空運'||mode==='快遞'?'warning':mode==='海運'||mode==='複合運輸'?'info':mode==='鐵路'?'success':'neutral';return `<span class="tag ${cls}">${mode}</span>`;}
 function buildShipments(){
-  return state.demandEvents.filter(d=>d.status==='已轉內部SO').map(d=>{
-    const trade=d.destinationRegion===d.region?'內銷':'外銷';const shipLead=trade==='內銷'?2:7;
-    return {...d,trade,plannedShipDate:shiftDate(d.demandDate,-shipLead),deliveryDate:d.demandDate,shippingStatus:d.shippingStatus||'待排程',incoterm:d.incoterm||(trade==='內銷'?'DAP':'FOB')};
+  return state.demandEvents.filter(d=>d.source==='客戶PO'&&d.status==='已轉內部SO'&&d.soNo).map(d=>{
+    const trade=d.destinationRegion===d.region?'內銷':'外銷';const transportMode=d.transportMode||chooseTransportMode(d,trade);const shipLead=transportLead(transportMode);
+    return {...d,trade,transportMode,plannedShipDate:shiftDate(d.demandDate,-shipLead),deliveryDate:d.demandDate,shippingStatus:d.shippingStatus||'待排程',incoterm:d.incoterm||(trade==='內銷'?'DAP':'FOB')};
   });
 }
 function renderShipment(){
-  $('#shipmentTradeFilter').value=state.shipmentTrade;$('#shipmentStatusFilter').value=state.shipmentStatus;
+  $('#shipmentTradeFilter').value=state.shipmentTrade;$('#shipmentTransportFilter').value=state.shipmentTransport;$('#shipmentStatusFilter').value=state.shipmentStatus;
   const all=buildShipments().filter(s=>inScope(s.factory));
-  const rows=all.filter(s=>state.shipmentTrade==='all'||s.trade===state.shipmentTrade).filter(s=>state.shipmentStatus==='all'||s.shippingStatus===state.shipmentStatus).sort((a,b)=>a.plannedShipDate.localeCompare(b.plannedShipDate));
+  const rows=all.filter(s=>state.shipmentTrade==='all'||s.trade===state.shipmentTrade).filter(s=>state.shipmentTransport==='all'||s.transportMode===state.shipmentTransport).filter(s=>state.shipmentStatus==='all'||s.shippingStatus===state.shipmentStatus).sort((a,b)=>a.plannedShipDate.localeCompare(b.plannedShipDate));
   const domestic=all.filter(x=>x.trade==='內銷'),exports=all.filter(x=>x.trade==='外銷'),risk=all.filter(x=>x.shippingStatus==='延遲風險'),ready=all.filter(x=>['待出貨','已出貨'].includes(x.shippingStatus));
   $('#shipmentKpis').innerHTML=[['內銷 SO',domestic.length,`${fmt(domestic.reduce((s,x)=>s+x.qty,0))} 件`,'內','tone-blue'],['外銷 SO',exports.length,`${fmt(exports.reduce((s,x)=>s+x.qty,0))} 件`,'外','tone-green'],['待出貨／已出貨',ready.length,'已具備交運排程','↗','tone-yellow'],['延遲風險',risk.length,'需確認生產與物流','!','tone-red']].map(kpiCard).join('');
-  $('#shipmentCount').textContent=`${rows.length}筆內部SO`;
-  $('#shipmentTable').innerHTML=rows.map(s=>`<tr class="${s.shippingStatus==='延遲風險'?'risk-row':''}"><td><strong>${s.soNo}</strong><br><button class="link-button shipment-demand-link" data-id="${s.id}">${s.id}</button></td><td><strong>${s.factory}</strong><br><span class="event-id">${factoryName(s.factory)}</span></td><td><span class="tag ${s.trade==='內銷'?'info':'success'}">${s.trade}</span></td><td><strong>${s.customer}</strong><br><span class="event-id">${s.destinationCountry}・${s.destinationCity}</span></td><td><strong>${s.product}</strong><br><span class="event-id">${s.sku}</span></td><td><strong>${fmt(s.qty)} 件</strong></td><td>${formatDateFull(s.demandDate)}</td><td>${formatDateFull(s.plannedShipDate)}</td><td>${s.incoterm}</td><td>${shipmentStatusTag(s.shippingStatus)}</td></tr>`).join('')||'<tr><td colspan="10">目前沒有符合條件的內部 SO 出貨資料</td></tr>';
-  $$('.shipment-demand-link').forEach(b=>b.addEventListener('click',()=>{const d=state.demandEvents.find(x=>x.id===b.dataset.id);state.region=d.region;state.factory=d.factory;$('#regionSelect').value=state.region;updateFactoryOptions();$('#factorySelect').value=state.factory;state.demandSource='all';state.demandStatus='已轉內部SO';renderAll();switchView('demand');}));
+  $('#shipmentCount').textContent=`${rows.length}筆客戶PO內部SO`;
+  $('#shipmentTable').innerHTML=rows.map(s=>`<tr class="${s.shippingStatus==='延遲風險'?'risk-row':''}"><td><strong>${s.soNo}</strong><br><button class="link-button shipment-demand-link" data-id="${s.id}">${s.id}</button><br><span class="event-id">${s.originMode}</span></td><td><strong>${s.factory}</strong><br><span class="event-id">${factoryName(s.factory)}</span></td><td><span class="tag ${s.trade==='內銷'?'info':'success'}">${s.trade}</span></td><td><strong>${s.customer}</strong><br><span class="event-id">${s.destinationCountry}・${s.destinationCity}</span></td><td><strong>${s.product}</strong><br><span class="event-id">${s.sku}</span></td><td><strong>${fmt(s.qty)} 件</strong></td><td>${formatDateFull(s.demandDate)}</td><td>${formatDateFull(s.plannedShipDate)}</td><td>${transportModeTag(s.transportMode)}</td><td>${s.incoterm}</td><td>${shipmentStatusTag(s.shippingStatus)}</td></tr>`).join('')||'<tr><td colspan="11">目前沒有符合條件的客戶PO內部SO出貨資料</td></tr>';
+  $$('.shipment-demand-link').forEach(b=>b.addEventListener('click',()=>{const d=state.demandEvents.find(x=>x.id===b.dataset.id);state.region=d.region;state.factory=d.factory;$('#regionSelect').value=state.region;updateFactoryOptions();$('#factorySelect').value=state.factory;state.demandSource='客戶PO';state.demandStatus='已轉內部SO';renderAll();switchView('demand');}));
 }
 function shipmentStatusTag(status){const cls=status==='延遲風險'?'danger':status==='已出貨'?'success':status==='待出貨'?'info':status==='備料中'?'warning':'neutral';return `<span class="tag ${cls}">${status}</span>`;}
 
@@ -416,8 +566,10 @@ function runSimulation(showToast=false){
 function metricRows(items){return items.map(([l,v,p])=>`<div class="metric-row"><div class="metric-line"><span>${l}</span><strong>${v}</strong></div><div class="bar-track"><i style="width:${Math.max(4,Math.min(100,p))}%"></i></div></div>`).join('');}
 function renderSimulationBreakdown(){
   $$('#simulationDimension .segment').forEach(b=>b.classList.toggle('active',b.dataset.dimension===state.simDimension));
-  const rows=state.demandEvents.filter(d=>inScope(d.factory)&&d.status!=='已取消');const key=state.simDimension==='product'?'product':'customer';const groups=rows.reduce((a,d)=>{const k=d[key];(a[k]??=[]).push(d);return a;},{});
-  const data=Object.entries(groups).map(([name,items])=>{const demand=items.reduce((s,x)=>s+x.qty,0);const factor=.79+(hashText(name)%19)/100;const finite=Math.round(demand*Math.min(.98,factor));const gap=demand-finite;return{name,demand,finite,gap,rate:finite/demand*100,secondary:state.simDimension==='product'?[...new Set(items.map(x=>x.factory))].join('、'):[...new Set(items.map(x=>x.product))].slice(0,3).join('、'),constraint:['材料供應','SMT能力','組裝產能','測試設備','無重大限制'][hashText(name)%5]};}).sort((a,b)=>b.gap-a.gap).slice(0,18);
+  const activeRows=state.demandEvents.filter(d=>inScope(d.factory)&&d.status!=='已取消'&&d.status!=='已轉換'&&d.status!=='已被PO消耗').map(d=>({...d,analysisQty:d.source==='計畫庫存'?(d.remainingQty??d.qty):d.qty})).filter(d=>d.analysisQty>0);
+  const rows=state.simDimension==='customer'?activeRows.filter(d=>d.source==='客戶PO'&&d.customer):activeRows;
+  const key=state.simDimension==='product'?'product':'customer';const groups=rows.reduce((a,d)=>{const k=d[key];(a[k]??=[]).push(d);return a;},{});
+  const data=Object.entries(groups).map(([name,items])=>{const demand=items.reduce((s,x)=>s+x.analysisQty,0);const factor=.79+(hashText(name)%19)/100;const finite=Math.round(demand*Math.min(.98,factor));const gap=demand-finite;return{name,demand,finite,gap,rate:finite/demand*100,secondary:state.simDimension==='product'?[...new Set(items.map(x=>x.factory))].join('、'):[...new Set(items.map(x=>x.product))].slice(0,3).join('、'),constraint:['材料供應','SMT能力','組裝產能','測試設備','無重大限制'][hashText(name)%5]};}).sort((a,b)=>b.gap-a.gap).slice(0,18);
   $('#simulationBreakdownHead').innerHTML=`<tr><th>${state.simDimension==='product'?'產品':'客戶'}</th><th>${state.simDimension==='product'?'生產工廠':'產品組合'}</th><th>無限需求</th><th>有限可達</th><th>缺口</th><th>滿足率</th><th>主要限制</th></tr>`;
   $('#simulationBreakdownBody').innerHTML=data.map(x=>`<tr><td><strong>${x.name}</strong></td><td class="reason-text">${x.secondary}</td><td>${fmt(x.demand)}</td><td>${fmt(x.finite)}</td><td class="${x.gap?'delta-up':'delta-down'}">${fmt(x.gap)}</td><td><div class="coverage-cell"><strong>${x.rate.toFixed(1)}%</strong><div class="mini-progress"><i style="width:${x.rate}%"></i></div></div></td><td>${x.constraint}</td></tr>`).join('')||'<tr><td colspan="7">此範圍沒有需求資料</td></tr>';
 }
@@ -454,7 +606,7 @@ function approveSelectedScenario(){const e=selectedEvent(),scenario=buildScenari
 
 function renderTracking(){const rows=state.tracking.filter(t=>inScope(t.factory)),red=rows.filter(x=>x.severity==='red').length,yellow=rows.filter(x=>x.severity==='yellow').length,green=rows.filter(x=>x.severity==='green').length;$('#trackingKpis').innerHTML=[['紅燈異常',red,'需要立即升級','!','tone-red'],['黃燈風險',yellow,'已有對策持續追蹤','△','tone-yellow'],['正常執行',green,'依承諾進行中','✓','tone-green'],['原始承諾達成率','91.6%','排除需求版本變更','%','tone-blue']].map(kpiCard).join('');const filtered=rows.filter(r=>state.trackingFilter==='all'||r.severity===state.trackingFilter);$('#trackingTable').innerHTML=filtered.map(r=>`<tr><td><strong>${r.item}</strong><br><span class="event-id">${r.id}</span></td><td>${r.factory}<br><span class="event-id">${factoryName(r.factory)}</span></td><td>${r.owner}</td><td>${r.target}</td><td>${r.actual}</td><td class="reason-text">${r.reason}</td><td>${sevTag(r.severity)}</td><td><button class="action-link tracking-action">${r.action}</button></td></tr>`).join('')||'<tr><td colspan="8">沒有符合條件的追蹤項目</td></tr>';$$('.tracking-filter').forEach(b=>{b.classList.toggle('active',b.dataset.status===state.trackingFilter);b.onclick=()=>{state.trackingFilter=b.dataset.status;renderTracking();};});$$('.tracking-action').forEach(b=>b.addEventListener('click',()=>toast(`已建立處置任務：${b.textContent}`)));}
 
-function persist(){saveStored('ct-events-v3',state.events);saveStored('ct-demand-events-v1',state.demandEvents);saveStored('ct-tracking-v3',state.tracking);saveStored('ct-commits-v3',state.commits);saveStored('ct-decisions-v3',state.decisions);}
+function persist(){saveStored('ct-events-v3',state.events);saveStored('ct-demand-events-v2',state.demandEvents);saveStored('ct-tracking-v3',state.tracking);saveStored('ct-commits-v3',state.commits);saveStored('ct-decisions-v3',state.decisions);}
 function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('show');clearTimeout(toast.timer);toast.timer=setTimeout(()=>t.classList.remove('show'),2600);}
 function closeOverlays(){$('#sidebar').classList.remove('open');$('#overlay').classList.remove('show');$('#tourModal').classList.remove('show');}
 function parseDate(v){return new Date(`${String(v).replaceAll('/','-')}T00:00:00`);}
@@ -467,7 +619,7 @@ function setupTour(){
   const steps=[
     {view:'overview',title:'1. 控制塔總覽',text:'從全球、地區或單一工廠查看需求、內部SO、變更風險及決策事項。',path:['選地區／工廠','看需求與SO','進入重大項目']},
     {view:'demand',title:'2. BY廠區需求總覽',text:'來源批次會依每一個需求日期拆成獨立事件，並保留來源與狀態。',path:['客戶預測／PO','日期拆分','確認／轉SO']},
-    {view:'shipment',title:'3. 內部SO出貨總覽',text:'只列出已轉內部SO的需求事件，並依出貨工廠與目的地判斷內銷或外銷。',path:['內部SO','內外銷','出貨狀態']},
+    {view:'shipment',title:'3. 客戶PO出貨總覽',text:'只有客戶PO轉成內部SO後才進入出貨總覽，並顯示內外銷、客戶、目的地、運輸模式與出貨狀態。',path:['客戶PO→內部SO','內外銷','運輸模式']},
     {view:'events',title:'4. 需求變更事件',text:'重大變更不直接覆蓋舊版本，而是保留數量、日期、來源與原因差異。',path:['版本差異','門檻判定','接受／退回／升級']},
     {view:'simulation',title:'5. 有限與無限模擬',text:'以相同快照比較需求與實際可達量，並可切換BY產品或BY客戶。',path:['無限需求','有限可達','產品／客戶檢視']},
     {view:'network',title:'6. 供應網路與BOM',text:'展開多階BOM，查看外部供應、友廠模組、SMT代工與跨廠調撥。',path:['多階BOM','友廠協同','供給覆蓋率']},
