@@ -9,7 +9,7 @@
   <meta http-equiv="Expires" content="0" />
   <meta name="description" content="跨廠區產品、BOM、供應網路、供需變更、瓶頸、承諾與決策管理互動原型" />
   <title>供需承諾控制塔｜互動原型</title>
-  <link rel="stylesheet" href="styles-v20260714-import7.css" />
+  <link rel="stylesheet" href="styles-v20260714-import8.css" />
 </head>
 <body>
   <div class="app-shell">
@@ -70,7 +70,7 @@
 
       <div class="sidebar-footer">
         <div class="system-status"><i></i>需求資料由使用者匯入</div>
-        <div class="build-version">Build 2026.07.14-IMPORT7</div>
+        <div class="build-version">Build 2026.07.14-IMPORT8</div>
         <button id="resetDemo" class="secondary-button full">清除需求資料</button>
       </div>
     </aside>
@@ -179,7 +179,7 @@
               <div>
                 <p class="eyebrow">DEMAND INTAKE</p>
                 <h2>需求匯入</h2>
-                <p class="muted">初始環境不含任何需求事件。可透過 CSV／JSON 檔案批次匯入，或以成品料號單筆 KEY IN。保存後會立即出現在需求總覽，並依來源進入對應關係鏈。</p>
+                <p class="muted">初始環境不含任何需求事件。可透過 CSV／JSON 檔案批次匯入，或使用清除前示範資料建立的標準下拉選項進行單筆建單。保存後會立即出現在需求總覽，並依來源進入對應關係鏈。</p>
               </div>
               <button class="secondary-button jump-view" data-target="demand">前往需求總覽</button>
             </div>
@@ -212,7 +212,7 @@
 
             <article class="panel manual-demand-panel">
               <div class="panel-header">
-                <div><p class="eyebrow">MANUAL ENTRY</p><h2>人工單筆 KEY 單</h2></div>
+                <div><p class="eyebrow">MANUAL ENTRY</p><h2>人工單筆 KEY 單｜標準選項</h2></div>
                 <span class="tag neutral">日期顆粒度：天</span>
               </div>
               <form id="manualDemandForm" class="manual-demand-form">
@@ -225,17 +225,14 @@
                   <option value="客戶PO">客戶 PO</option>
                 </select></label>
                 <label class="form-span-2"><span>成品料號</span><select id="manualDemandSku" required></select></label>
-                <div class="form-span-2">
-                  <span class="form-field-label">可生產廠區</span>
-                  <div id="manualFactoryOptions" class="factory-option-grid"></div>
-                </div>
-                <label><span>需求數量</span><input id="manualDemandQty" type="number" min="1" step="1" placeholder="例如 5000" required /></label>
-                <label><span>需求日期</span><input id="manualDemandDate" type="date" min="2026-07-14" required /></label>
-                <label><span>提出者</span><input id="manualDemandProposer" type="text" placeholder="姓名" required /></label>
-                <label><span>提出部門</span><input id="manualDemandDept" type="text" placeholder="部門" required /></label>
-                <label><span>客戶／需求用途</span><input id="manualDemandAudience" type="text" placeholder="客戶名稱或內部用途" /></label>
-                <label><span>目的國家／城市</span><input id="manualDemandDestination" type="text" placeholder="客戶 PO 時填寫，例如 日本／名古屋" /></label>
-                <label class="form-span-2"><span>備註</span><textarea id="manualDemandNote" rows="3" placeholder="補充來源文件、專案或優先順序說明"></textarea></label>
+                <label class="form-span-2"><span>可生產廠區</span><select id="manualDemandFactory" required></select></label>
+                <label><span>需求數量</span><select id="manualDemandQty" required></select></label>
+                <label><span>需求日期</span><select id="manualDemandDate" required></select></label>
+                <label><span>提出者</span><select id="manualDemandProposer" required></select></label>
+                <label><span>提出部門</span><select id="manualDemandDept" required></select></label>
+                <label><span>客戶／需求用途</span><select id="manualDemandAudience" required></select></label>
+                <label><span>目的國家／城市</span><select id="manualDemandDestination" required></select></label>
+                <label class="form-span-2"><span>需求說明</span><select id="manualDemandNote" required></select></label>
                 <div class="form-span-2 manual-demand-summary" id="manualDemandSummary"></div>
                 <div class="form-span-2 detail-actions">
                   <button class="primary-button" type="submit">保存需求事件</button>
@@ -733,6 +730,6 @@
     </div>
   </div>
 
-  <script src="app-v20260714-import7.js"></script>
+  <script src="app-v20260714-import8.js"></script>
 </body>
 </html>
