@@ -21,13 +21,15 @@
 
       <nav class="main-nav" aria-label="主要導覽">
         <button class="nav-item active" data-view="overview"><span>01</span>總覽控制塔</button>
-        <button class="nav-item" data-view="events"><span>02</span>需求變更事件</button>
-        <button class="nav-item" data-view="simulation"><span>03</span>有限／無限模擬</button>
-        <button class="nav-item" data-view="network"><span>04</span>供應網路與 BOM</button>
-        <button class="nav-item" data-view="bottlenecks"><span>05</span>瓶頸分析</button>
-        <button class="nav-item" data-view="commit"><span>06</span>責任人 Commit</button>
-        <button class="nav-item" data-view="decision"><span>07</span>跨部門決策室</button>
-        <button class="nav-item" data-view="tracking"><span>08</span>執行追蹤與 Highlight</button>
+        <button class="nav-item" data-view="demand"><span>02</span>需求總覽</button>
+        <button class="nav-item" data-view="shipment"><span>03</span>出貨總覽</button>
+        <button class="nav-item" data-view="events"><span>04</span>需求變更事件</button>
+        <button class="nav-item" data-view="simulation"><span>05</span>有限／無限模擬</button>
+        <button class="nav-item" data-view="network"><span>06</span>供應網路與 BOM</button>
+        <button class="nav-item" data-view="bottlenecks"><span>07</span>瓶頸分析</button>
+        <button class="nav-item" data-view="commit"><span>08</span>責任人 Commit</button>
+        <button class="nav-item" data-view="decision"><span>09</span>跨部門決策室</button>
+        <button class="nav-item" data-view="tracking"><span>10</span>執行追蹤與 Highlight</button>
       </nav>
 
       <div class="sidebar-footer">
@@ -129,6 +131,101 @@
               <div class="decision-queue" id="decisionQueue"></div>
             </article>
           </div>
+        </section>
+
+        <!-- Demand Overview -->
+        <section class="view" id="view-demand">
+          <div class="kpi-grid demand-source-kpis" id="demandKpis"></div>
+
+          <article class="panel demand-toolbar-panel">
+            <div class="panel-header stacked-mobile">
+              <div>
+                <p class="eyebrow">DEMAND EVENT OVERVIEW</p>
+                <h2>BY 廠區需求事件</h2>
+                <p class="muted">需求依需求日期拆分成獨立事件；每筆保留來源、狀態、來源批次與是否已轉內部 SO。</p>
+              </div>
+              <div class="demand-filters">
+                <label><span>來源</span><select id="demandSourceFilter">
+                  <option value="all">全部來源</option>
+                  <option value="客戶預測">客戶預測</option>
+                  <option value="內部預測">內部預測</option>
+                  <option value="客戶PO">客戶 PO</option>
+                  <option value="計畫庫存">計畫庫存</option>
+                  <option value="緊急詢單">緊急詢單</option>
+                </select></label>
+                <label><span>狀態</span><select id="demandStatusFilter">
+                  <option value="all">全部狀態</option>
+                  <option value="待整合">待整合</option>
+                  <option value="待確認">待確認</option>
+                  <option value="已確認">已確認</option>
+                  <option value="已轉內部SO">已轉內部 SO</option>
+                  <option value="已取消">已取消</option>
+                </select></label>
+                <label><span>日期區間</span><select id="demandHorizonFilter">
+                  <option value="all">全部日期</option>
+                  <option value="30">未來 30 天</option>
+                  <option value="60">未來 60 天</option>
+                  <option value="90">未來 90 天</option>
+                </select></label>
+              </div>
+            </div>
+          </article>
+
+          <article class="panel">
+            <div class="panel-header stacked-mobile">
+              <div><p class="eyebrow">DATE-SPLIT EVENTS</p><h2>需求事件明細</h2></div>
+              <span class="tag neutral" id="demandEventCount"></span>
+            </div>
+            <div class="table-wrap demand-table-wrap">
+              <table class="demand-table">
+                <thead><tr><th>需求事件／來源批次</th><th>需求日期</th><th>來源</th><th>狀態</th><th>客戶／用途</th><th>產品／成品料號</th><th>需求量</th><th>內部 SO</th><th>操作</th></tr></thead>
+                <tbody id="demandEventTable"></tbody>
+              </table>
+            </div>
+          </article>
+        </section>
+
+        <!-- Shipment Overview -->
+        <section class="view" id="view-shipment">
+          <div class="kpi-grid compact-kpis" id="shipmentKpis"></div>
+
+          <article class="panel shipment-toolbar-panel">
+            <div class="panel-header stacked-mobile">
+              <div>
+                <p class="eyebrow">INTERNAL SO & SHIPMENT</p>
+                <h2>內部 SO 出貨總覽</h2>
+                <p class="muted">僅列出需求事件中已轉成內部 SO 的項目，依出貨工廠與目的地區分內銷、外銷。</p>
+              </div>
+              <div class="shipment-filters">
+                <label><span>銷售型態</span><select id="shipmentTradeFilter">
+                  <option value="all">內外銷全部</option>
+                  <option value="內銷">內銷</option>
+                  <option value="外銷">外銷</option>
+                </select></label>
+                <label><span>出貨狀態</span><select id="shipmentStatusFilter">
+                  <option value="all">全部狀態</option>
+                  <option value="待排程">待排程</option>
+                  <option value="備料中">備料中</option>
+                  <option value="待出貨">待出貨</option>
+                  <option value="已出貨">已出貨</option>
+                  <option value="延遲風險">延遲風險</option>
+                </select></label>
+              </div>
+            </div>
+          </article>
+
+          <article class="panel">
+            <div class="panel-header stacked-mobile">
+              <div><p class="eyebrow">SHIPMENT SCHEDULE</p><h2>出貨與交運明細</h2></div>
+              <span class="tag neutral" id="shipmentCount"></span>
+            </div>
+            <div class="table-wrap">
+              <table class="shipment-table">
+                <thead><tr><th>內部 SO／需求事件</th><th>工廠</th><th>內外銷</th><th>客戶／目的地</th><th>產品／料號</th><th>SO 數量</th><th>需求日期</th><th>計畫出貨</th><th>貿易條件</th><th>狀態</th></tr></thead>
+                <tbody id="shipmentTable"></tbody>
+              </table>
+            </div>
+          </article>
         </section>
 
         <!-- Events -->
