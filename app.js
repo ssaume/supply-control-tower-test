@@ -302,6 +302,7 @@ const state={
   eventSeverity:'all',eventStatus:'all',trackingFilter:'all',simDimension:'product',simulated:null,
   productionFactory:'TW01',productionHorizon:14,productionResource:'all',
   demandSource:'all',demandStatus:'all',demandHorizon:'all',shipmentTrade:'all',shipmentTransport:'all',shipmentStatus:'all',
+  expandedDemandId:'',expandedShipmentId:'',selectedWorkOrderByEvent:{},
   networkProduct:'all',networkSku:'all',networkRelation:'all',
   events:loadStored('ct-events-v4',structuredClone(baseEvents)),
   demandEvents:loadStored('ct-demand-events-v2',structuredClone(baseDemandEvents)),
@@ -365,7 +366,7 @@ function setupInteractions(){
   $('#productionResourceFilter').addEventListener('change',e=>{state.productionResource=e.target.value;renderProduction();});
   $('#resetDemo').addEventListener('click',()=>{
     clearStored(['ct-events-v3','ct-events-v4','ct-demand-events-v1','ct-demand-events-v2','ct-tracking-v3','ct-commits-v3','ct-decisions-v3']);
-    state.events=structuredClone(baseEvents);state.demandEvents=structuredClone(baseDemandEvents);state.tracking=structuredClone(trackingBase);state.commits={};state.decisions={};state.selectedEventId=baseEvents[0].id;state.selectedScenario=null;renderAll();toast('示範資料已重設');
+    state.events=structuredClone(baseEvents);state.demandEvents=structuredClone(baseDemandEvents);state.tracking=structuredClone(trackingBase);state.commits={};state.decisions={};state.selectedEventId=baseEvents[0].id;state.selectedScenario=null;state.expandedDemandId='';state.expandedShipmentId='';state.selectedWorkOrderByEvent={};renderAll();toast('示範資料已重設');
   });
 }
 function setupNetworkControls(){
@@ -418,6 +419,154 @@ function renderOverview(){
 }
 function kpiCard([l,v,n,i,t]){return `<article class="kpi-card ${t}"><div class="kpi-top"><div><div class="kpi-label">${l}</div><div class="kpi-value">${v}</div><div class="kpi-note">${n}</div></div><div class="kpi-icon">${i}</div></div></article>`;}
 
+function fulfillmentSeed(eventId,itemId=''){
+  return hashText(`${eventId}|${itemId}`);
+}
+function progressFor(event,nodeId,kind){
+  const seed=fulfillmentSeed(event.id,nodeId+kind);
+  let base=event.status==='已轉內部SO'?42:event.source==='客戶PO'?24:event.status==='已確認'?15:6;
+  if(event.shippingStatus==='已出貨')base=100;
+  else if(event.shippingStatus==='待出貨')base=82;
+  else if(event.shippingStatus==='備料中')base=54;
+  else if(event.shippingStatus==='延遲風險')base=38;
+  const bias=kind==='purchase'?((seed%27)-8):((seed%31)-10);
+  return Math.max(0,Math.min(100,base+bias));
+}
+function orderStatus(progress,risk=false,planned=false){
+  if(planned&&progress<10)return '計畫中';
+  if(progress>=100)return '已完成';
+  if(risk&&progress<60)return '延遲風險';
+  if(progress>=75)return '接近完成';
+  if(progress>=25)return '執行中';
+  return '待開工';
+}
+function fulfillmentStatusTag(status){
+  const cls=status==='已完成'?'success':status==='延遲風險'?'danger':status==='接近完成'?'info':status==='執行中'?'warning':'neutral';
+  return `<span class="tag ${cls}">${status}</span>`;
+}
+function extractPlant(source){
+  const m=String(source||'').match(/｜(TW\d{2}|CN\d{2}|TH\d{2})/);return m?m[1]:'';
+}
+function flattenBom(node,level=0,parentId=''){
+  const row={...node,level,parentId};
+  return [row,...(node.children||[]).flatMap(c=>flattenBom(c,level+1,node.id))];
+}
+function supplyRelationFor(sku,type){
+  return supplyRelations.find(r=>r.sku===sku&&r.type===type)||null;
+}
+function buildFulfillment(event){
+  const item=skuLookup[event.sku]||productCatalog.find(x=>x.productKey===event.productKey);
+  if(!item)return {event,workOrders:[],purchaseOrders:[],nodes:[],item:null};
+  const nodes=flattenBom(item.bom);
+  const planned=event.source!=='客戶PO'||event.status!=='已轉內部SO';
+  const workOrders=[];const purchaseOrders=[];
+  const dueBase=event.demandDate;
+  nodes.forEach((node,index)=>{
+    const seed=fulfillmentSeed(event.id,node.id);
+    const factor=node.level===0?1:Math.max(.72,.94-node.level*.04);
+    const qty=Math.max(1,Math.round(event.qty*factor));
+    const due=shiftDate(dueBase,-Math.max(0,(nodes.length-index)%8+node.level*2));
+    const start=shiftDate(due,-Math.max(1,3+node.level+(seed%4)));
+    const risk=(seed%9===0)||(event.shippingStatus==='延遲風險'&&node.level<2);
+    const source=String(node.source||'');
+    const isInternal=node.level===0||node.type==='internal'||source==='自製';
+    const isOutsource=node.type==='smt'||source.startsWith('友廠模組')||source.startsWith('友廠SMT');
+    const isPurchase=node.type==='external'||source.includes('外部供應商')||source.includes('在地供應商')||source.includes('半導體供應商')||source==='外購模組';
+    if(isInternal||isOutsource){
+      const kind=isOutsource?'委外工單':'內製工單';
+      const relationType=node.type==='smt'?'smt':source.startsWith('友廠模組')?'module':'internal';
+      const relation=supplyRelationFor(event.sku,relationType);
+      const supplierPlant=isOutsource?(extractPlant(source)||relation?.source||'協力廠') : event.factory;
+      const progress=progressFor(event,node.id,'work');
+      const id=`${isOutsource?'SUB':'MO'}-${event.factory}-${String(seed%100000).padStart(5,'0')}`;
+      workOrders.push({id,eventId:event.id,bomId:node.id,parentBomId:node.parentId,level:node.level,item:node.name,kind,source,nodeType:node.type,
+        plant:supplierPlant,qty,start,due,progress,risk,status:orderStatus(progress,risk,planned),relationType,
+        relationLabel:isOutsource?(node.type==='smt'?'友廠SMT代工':'友廠模組供應'):'廠內生產'});
+    }
+    if(isPurchase){
+      const relation=supplyRelationFor(event.sku,'external');
+      const progress=progressFor(event,node.id,'purchase');
+      const ordered=Math.max(1,Math.round(qty*(.96+(seed%8)/100)));
+      const received=Math.min(ordered,Math.round(ordered*progress/100));
+      const vendor=source==='外購模組'?(relation?.source||'模組供應商'):(relation?.source||source||'外部供應商');
+      purchaseOrders.push({id:`PO-${event.factory}-${String(seed%100000).padStart(5,'0')}`,eventId:event.id,bomId:node.id,parentBomId:node.parentId,level:node.level,item:node.name,
+        vendor,qty:ordered,received,due,progress,risk,status:progress>=100?'已到料':risk&&progress<60?'到料風險':progress>=70?'部分到料':'催交中',source,nodeType:node.type,
+        relationLabel:source==='外購模組'?'外購現成模組':'外部採購'});
+    }
+  });
+  // 讓每一張成品工單具備可閱讀的最終測試工單，並掛在根工單下。
+  const root=workOrders.find(w=>w.level===0);
+  if(root){
+    const seed=fulfillmentSeed(event.id,'FINAL-TEST');const progress=Math.max(0,root.progress-12);
+    workOrders.push({id:`MO-${event.factory}-${String(seed%100000).padStart(5,'0')}`,eventId:event.id,bomId:`${event.sku}-TEST`,parentBomId:root.bomId,level:1,item:'最終功能測試／校正',kind:'內製工單',source:'自製',nodeType:'route',plant:event.factory,qty:event.qty,
+      start:shiftDate(event.demandDate,-4),due:shiftDate(event.demandDate,-2),progress,risk:root.risk,status:orderStatus(progress,root.risk,planned),relationType:'internal',relationLabel:'廠內測試'});
+  }
+  return {event,item,nodes,workOrders,purchaseOrders};
+}
+function fulfillmentSummary(f){
+  const workAvg=f.workOrders.length?f.workOrders.reduce((s,x)=>s+x.progress,0)/f.workOrders.length:0;
+  const poQty=f.purchaseOrders.reduce((s,x)=>s+x.qty,0);const received=f.purchaseOrders.reduce((s,x)=>s+x.received,0);const matRate=poQty?received/poQty*100:100;
+  return {workAvg,matRate,internal:f.workOrders.filter(x=>x.kind==='內製工單').length,outsource:f.workOrders.filter(x=>x.kind==='委外工單').length,purchase:f.purchaseOrders.length,
+    risk:f.workOrders.filter(x=>x.risk&&x.progress<60).length+f.purchaseOrders.filter(x=>x.risk&&x.progress<60).length};
+}
+function progressHtml(progress,label=''){
+  const cls=progress<40?'red':progress<75?'yellow':'green';
+  return `<div class="order-progress"><div><strong>${Math.round(progress)}%</strong><span>${label}</span></div><div class="mini-progress ${cls}"><i style="width:${Math.min(100,progress)}%"></i></div></div>`;
+}
+function fulfillmentPanel(event,context){
+  const f=buildFulfillment(event);const summary=fulfillmentSummary(f);
+  const selectedId=state.selectedWorkOrderByEvent[event.id]||f.workOrders[0]?.id||'';
+  const selected=f.workOrders.find(x=>x.id===selectedId)||f.workOrders[0];
+  if(selected)state.selectedWorkOrderByEvent[event.id]=selected.id;
+  const workRows=f.workOrders.map(w=>`<tr class="fulfillment-order-row ${w.id===selected?.id?'selected':''}" data-event="${event.id}" data-work-order="${w.id}" data-context="${context}"><td><button class="work-order-link" data-event="${event.id}" data-work-order="${w.id}" data-context="${context}">${w.id}</button><br><span class="event-id">BOM L${w.level}・${w.bomId}</span></td><td><span class="tag ${w.kind==='委外工單'?'warning':'info'}">${w.kind}</span><br><span class="event-id">${w.relationLabel}</span></td><td><strong>${w.item}</strong></td><td><strong>${w.plant}</strong><br><span class="event-id">${factoryName(w.plant)||w.plant}</span></td><td>${fmt(w.qty)} 件</td><td>${formatDate(w.start)} → ${formatDate(w.due)}</td><td>${progressHtml(w.progress)}</td><td>${fulfillmentStatusTag(w.status)}</td></tr>`).join('');
+  const poRows=f.purchaseOrders.map(po=>`<tr><td><strong>${po.id}</strong><br><span class="event-id">BOM L${po.level}・${po.bomId}</span></td><td><strong>${po.item}</strong><br><span class="event-id">${po.relationLabel}</span></td><td>${po.vendor}</td><td>${fmt(po.qty)} 件</td><td>${fmt(po.received)} 件</td><td>${formatDate(po.due)}</td><td>${progressHtml(po.progress,'到料')}</td><td>${fulfillmentStatusTag(po.status==='已到料'?'已完成':po.status==='到料風險'?'延遲風險':'執行中')}</td></tr>`).join('');
+  return `<div class="fulfillment-panel" data-fulfillment-event="${event.id}">
+    <div class="fulfillment-head"><div><p class="eyebrow">DEMAND FULFILLMENT TRACE</p><h3>${event.id}｜${event.product} ${event.sku}</h3><p>依生產BOM與跨廠供應關係追蹤工單、委外與採購到料。點擊工單可查看直接下階關係。</p></div><span class="tag ${summary.risk?'danger':'success'}">${summary.risk?`${summary.risk}項風險`:'履行正常'}</span></div>
+    <div class="fulfillment-kpis"><div><span>生產平均進度</span><strong>${summary.workAvg.toFixed(0)}%</strong></div><div><span>物料到料率</span><strong>${summary.matRate.toFixed(0)}%</strong></div><div><span>內製工單</span><strong>${summary.internal}</strong></div><div><span>委外工單</span><strong>${summary.outsource}</strong></div><div><span>採購PO</span><strong>${summary.purchase}</strong></div></div>
+    <div class="fulfillment-grid">
+      <section class="fulfillment-section"><div class="subsection-title"><div><h4>對應生產工單</h4><span>含內製與友廠／委外工單</span></div><span class="tag neutral">${f.workOrders.length}張</span></div><div class="table-wrap fulfillment-table-wrap"><table class="fulfillment-table"><thead><tr><th>工單／BOM</th><th>類型</th><th>生產項目</th><th>生產單位</th><th>數量</th><th>計畫期間</th><th>進度</th><th>狀態</th></tr></thead><tbody>${workRows||'<tr><td colspan="8">尚未產生工單</td></tr>'}</tbody></table></div></section>
+      <section class="fulfillment-section"><div class="subsection-title"><div><h4>物料採購清單</h4><span>外購零件、現成模組與供應商到料</span></div><span class="tag neutral">${f.purchaseOrders.length}張</span></div><div class="table-wrap fulfillment-table-wrap"><table class="fulfillment-table"><thead><tr><th>採購PO／BOM</th><th>採購項目</th><th>供應來源</th><th>訂購</th><th>已到</th><th>承諾日</th><th>到料進度</th><th>狀態</th></tr></thead><tbody>${poRows||'<tr><td colspan="8">無外購項目</td></tr>'}</tbody></table></div></section>
+    </div>
+    ${renderWorkOrderDependencies(f,selected)}
+  </div>`;
+}
+function renderWorkOrderDependencies(f,selected){
+  if(!selected)return '<div class="empty-state">沒有可檢視的生產工單</div>';
+  const childWorks=f.workOrders.filter(w=>w.parentBomId===selected.bomId&&w.id!==selected.id);
+  const childPos=f.purchaseOrders.filter(po=>po.parentBomId===selected.bomId);
+  const descendants=[...childWorks.map(x=>({...x,dependencyType:'work'})),...childPos.map(x=>({...x,dependencyType:'purchase'}))];
+  const cards=descendants.map(x=>x.dependencyType==='work'?`<button class="dependency-card work-order-link" data-event="${f.event.id}" data-work-order="${x.id}" data-context="dependency"><span class="tag ${x.kind==='委外工單'?'warning':'info'}">${x.kind}</span><strong>${x.item}</strong><small>${x.id}・${x.plant}</small>${progressHtml(x.progress)}</button>`:`<article class="dependency-card purchase"><span class="tag success">採購PO</span><strong>${x.item}</strong><small>${x.id}・${x.vendor}</small>${progressHtml(x.progress,'到料')}</article>`).join('');
+  const path=[];let cursor=selected;const seen=new Set();
+  while(cursor&&!seen.has(cursor.id)){seen.add(cursor.id);path.unshift(cursor);cursor=f.workOrders.find(w=>w.bomId===cursor.parentBomId);}
+  return `<section class="dependency-panel"><div class="dependency-header"><div><p class="eyebrow">BOM & SUPPLY CHAIN DRILLDOWN</p><h4>${selected.id}｜${selected.item}</h4><p>${path.map(x=>x.item).join(' → ')}</p></div><div class="dependency-meta"><span>${selected.kind}</span><strong>BOM L${selected.level}</strong><span>${selected.relationLabel}</span></div></div><div class="dependency-body"><div class="selected-order-card"><span>目前工單</span><strong>${selected.plant}｜${fmt(selected.qty)}件</strong><small>${formatDate(selected.start)} → ${formatDate(selected.due)}</small>${progressHtml(selected.progress)}</div><div class="dependency-arrow">下階供應<br>↓</div><div class="dependency-list">${cards||'<div class="leaf-node"><strong>此工單已是製造葉節點</strong><span>沒有更下階工單或採購PO。</span></div>'}</div></div></section>`;
+}
+function bindFulfillmentInteractions(context){
+  const root=context==='demand'?'#view-demand':'#view-shipment';
+  const mainSelector=context==='demand'?`${root} .demand-main-row`:`${root} .shipment-main-row`;
+  $$(mainSelector).forEach(row=>row.addEventListener('click',ev=>{
+    if(ev.target.closest('button,a,select,input'))return;
+    const id=row.dataset.eventId;
+    if(context==='demand')state.expandedDemandId=state.expandedDemandId===id?'':id;
+    else state.expandedShipmentId=state.expandedShipmentId===id?'':id;
+    context==='demand'?renderDemand():renderShipment();
+  }));
+  $$(`${root} .fulfillment-toggle`).forEach(btn=>btn.addEventListener('click',ev=>{
+    ev.stopPropagation();const id=btn.dataset.id;
+    if(context==='demand')state.expandedDemandId=state.expandedDemandId===id?'':id;
+    else state.expandedShipmentId=state.expandedShipmentId===id?'':id;
+    context==='demand'?renderDemand():renderShipment();
+  }));
+  $$(`${root} .fulfillment-order-row`).forEach(row=>row.addEventListener('click',ev=>{
+    if(ev.target.closest('button,a'))return;
+    state.selectedWorkOrderByEvent[row.dataset.event]=row.dataset.workOrder;
+    context==='demand'?renderDemand():renderShipment();
+  }));
+  $$(`${root} .work-order-link`).forEach(btn=>btn.addEventListener('click',ev=>{
+    ev.stopPropagation();state.selectedWorkOrderByEvent[btn.dataset.event]=btn.dataset.workOrder;
+    context==='demand'?renderDemand():renderShipment();
+  }));
+}
+
 function demandScopeRows(){
   return state.demandEvents.filter(d=>inScope(d.factory)).filter(d=>state.demandSource==='all'||d.source===state.demandSource).filter(d=>state.demandStatus==='all'||d.status===state.demandStatus).filter(d=>{
     if(state.demandHorizon==='all')return true;return dateDiff(d.demandDate,TODAY)<=Number(state.demandHorizon)&&dateDiff(d.demandDate,TODAY)>=0;
@@ -433,9 +582,10 @@ function renderDemand(){
   $('#demandEventTable').innerHTML=Object.entries(grouped).map(([factory,items])=>{
     const total=items.reduce((s,x)=>s+x.qty,0);
     const header=`<tr class="factory-group-row"><td colspan="10"><div><strong>${factory}｜${factoryName(factory)}</strong><span>${items.length}筆事件・${fmt(total)}件</span></div></td></tr>`;
-    return header+items.map(demandRow).join('');
+    return header+items.map(d=>demandRow(d)+(state.expandedDemandId===d.id?`<tr class="fulfillment-expand-row"><td colspan="10">${fulfillmentPanel(d,'demand')}</td></tr>`:'')).join('');
   }).join('')||'<tr><td colspan="10">沒有符合條件的需求事件</td></tr>';
-  $$('.demand-action').forEach(b=>b.addEventListener('click',()=>handleDemandAction(b.dataset.id,b.dataset.action)));
+  $$('.demand-action').forEach(b=>b.addEventListener('click',ev=>{ev.stopPropagation();handleDemandAction(b.dataset.id,b.dataset.action);}));
+  bindFulfillmentInteractions('demand');
 }
 function demandChain(d){
   const chain=[];const seen=new Set();let cursor=d;
@@ -464,7 +614,8 @@ function demandRow(d){
     else if(d.source==='客戶PO')action=['轉內部SO','toSo'];
   }else if(d.source==='客戶PO'&&d.status==='已轉內部SO')action=['查看SO','viewSo'];
   else if((d.childEventIds||[]).length)action=['查看下游','viewDownstream'];
-  return `<tr><td><strong>${d.id}</strong><br><span class="event-id">批次 ${d.batchId}</span></td><td><strong>${formatDateFull(d.demandDate)}</strong><br><span class="event-id">建立 ${formatDate(d.createdDate)}</span></td><td><span class="tag ${sourceClass[d.source]}">${d.source}</span></td><td><span class="tag ${statusClass[d.status]||'neutral'}">${d.status}</span></td><td>${relationChainHtml(d)}</td><td>${demandAudienceHtml(d)}</td><td><strong>${d.product}</strong><br><span class="event-id">${d.sku}</span></td><td><strong>${fmt(d.qty)} 件</strong>${d.source==='計畫庫存'&&d.remainingQty!==null?`<br><span class="event-id">剩餘 ${fmt(d.remainingQty)} 件</span>`:`<br><span class="event-id">P${d.priority}</span>`}</td><td>${d.soNo?`<strong>${d.soNo}</strong>`:'<span class="event-id">尚未建立</span>'}</td><td><button class="action-link demand-action" data-id="${d.id}" data-action="${action[1]}" ${action[1]==='none'?'disabled':''}>${action[0]}</button></td></tr>`;
+  const expanded=state.expandedDemandId===d.id;
+  return `<tr class="demand-main-row expandable-data-row ${expanded?'expanded':''}" data-event-id="${d.id}"><td><button class="fulfillment-toggle row-expand-toggle" data-id="${d.id}" data-context="demand" aria-label="${expanded?'收合':'展開'}需求履行">${expanded?'−':'+'}</button><strong>${d.id}</strong><br><span class="event-id">批次 ${d.batchId}</span></td><td><strong>${formatDateFull(d.demandDate)}</strong><br><span class="event-id">建立 ${formatDate(d.createdDate)}</span></td><td><span class="tag ${sourceClass[d.source]}">${d.source}</span></td><td><span class="tag ${statusClass[d.status]||'neutral'}">${d.status}</span></td><td>${relationChainHtml(d)}</td><td>${demandAudienceHtml(d)}</td><td><strong>${d.product}</strong><br><span class="event-id">${d.sku}</span></td><td><strong>${fmt(d.qty)} 件</strong>${d.source==='計畫庫存'&&d.remainingQty!==null?`<br><span class="event-id">剩餘 ${fmt(d.remainingQty)} 件</span>`:`<br><span class="event-id">P${d.priority}</span>`}</td><td>${d.soNo?`<strong>${d.soNo}</strong>`:'<span class="event-id">尚未建立</span>'}</td><td><button class="action-link demand-action" data-id="${d.id}" data-action="${action[1]}" ${action[1]==='none'?'disabled':''}>${action[0]}</button></td></tr>`;
 }
 function nextDemandId(){
   const n=Math.max(0,...state.demandEvents.map(x=>Number((x.id.match(/\d+/)||['0'])[0])));return `DE-${String(n+1).padStart(4,'0')}`;
@@ -539,8 +690,9 @@ function renderShipment(){
   const domestic=all.filter(x=>x.trade==='內銷'),exports=all.filter(x=>x.trade==='外銷'),risk=all.filter(x=>x.shippingStatus==='延遲風險'),ready=all.filter(x=>['待出貨','已出貨'].includes(x.shippingStatus));
   $('#shipmentKpis').innerHTML=[['內銷 SO',domestic.length,`${fmt(domestic.reduce((s,x)=>s+x.qty,0))} 件`,'內','tone-blue'],['外銷 SO',exports.length,`${fmt(exports.reduce((s,x)=>s+x.qty,0))} 件`,'外','tone-green'],['待出貨／已出貨',ready.length,'已具備交運排程','↗','tone-yellow'],['延遲風險',risk.length,'需確認生產與物流','!','tone-red']].map(kpiCard).join('');
   $('#shipmentCount').textContent=`${rows.length}筆客戶PO內部SO`;
-  $('#shipmentTable').innerHTML=rows.map(s=>`<tr class="${s.shippingStatus==='延遲風險'?'risk-row':''}"><td><strong>${s.soNo}</strong><br><button class="link-button shipment-demand-link" data-id="${s.id}">${s.id}</button><br><span class="event-id">${s.originMode}</span></td><td><strong>${s.factory}</strong><br><span class="event-id">${factoryName(s.factory)}</span></td><td><span class="tag ${s.trade==='內銷'?'info':'success'}">${s.trade}</span></td><td><strong>${s.customer}</strong><br><span class="event-id">${s.destinationCountry}・${s.destinationCity}</span></td><td><strong>${s.product}</strong><br><span class="event-id">${s.sku}</span></td><td><strong>${fmt(s.qty)} 件</strong></td><td>${formatDateFull(s.demandDate)}</td><td>${formatDateFull(s.plannedShipDate)}</td><td>${transportModeTag(s.transportMode)}</td><td>${s.incoterm}</td><td>${shipmentStatusTag(s.shippingStatus)}</td></tr>`).join('')||'<tr><td colspan="11">目前沒有符合條件的客戶PO內部SO出貨資料</td></tr>';
-  $$('.shipment-demand-link').forEach(b=>b.addEventListener('click',()=>{const d=state.demandEvents.find(x=>x.id===b.dataset.id);state.region=d.region;state.factory=d.factory;$('#regionSelect').value=state.region;updateFactoryOptions();$('#factorySelect').value=state.factory;state.demandSource='客戶PO';state.demandStatus='已轉內部SO';renderAll();switchView('demand');}));
+  $('#shipmentTable').innerHTML=rows.map(s=>{const expanded=state.expandedShipmentId===s.id;return `<tr class="shipment-main-row expandable-data-row ${s.shippingStatus==='延遲風險'?'risk-row':''} ${expanded?'expanded':''}" data-event-id="${s.id}"><td><button class="fulfillment-toggle row-expand-toggle" data-id="${s.id}" data-context="shipment" aria-label="${expanded?'收合':'展開'}需求履行">${expanded?'−':'+'}</button><strong>${s.soNo}</strong><br><button class="link-button shipment-demand-link" data-id="${s.id}">${s.id}</button><br><span class="event-id">${s.originMode}</span></td><td><strong>${s.factory}</strong><br><span class="event-id">${factoryName(s.factory)}</span></td><td><span class="tag ${s.trade==='內銷'?'info':'success'}">${s.trade}</span></td><td><strong>${s.customer}</strong><br><span class="event-id">${s.destinationCountry}・${s.destinationCity}</span></td><td><strong>${s.product}</strong><br><span class="event-id">${s.sku}</span></td><td><strong>${fmt(s.qty)} 件</strong></td><td>${formatDateFull(s.demandDate)}</td><td>${formatDateFull(s.plannedShipDate)}</td><td>${transportModeTag(s.transportMode)}</td><td>${s.incoterm}</td><td>${shipmentStatusTag(s.shippingStatus)}</td></tr>${expanded?`<tr class="fulfillment-expand-row"><td colspan="11">${fulfillmentPanel(s,'shipment')}</td></tr>`:''}`;}).join('')||'<tr><td colspan="11">目前沒有符合條件的客戶PO內部SO出貨資料</td></tr>';
+  $$('.shipment-demand-link').forEach(b=>b.addEventListener('click',ev=>{ev.stopPropagation();const d=state.demandEvents.find(x=>x.id===b.dataset.id);state.region=d.region;state.factory=d.factory;$('#regionSelect').value=state.region;updateFactoryOptions();$('#factorySelect').value=state.factory;state.demandSource='客戶PO';state.demandStatus='已轉內部SO';renderAll();switchView('demand');}));
+  bindFulfillmentInteractions('shipment');
 }
 function shipmentStatusTag(status){const cls=status==='延遲風險'?'danger':status==='已出貨'?'success':status==='待出貨'?'info':status==='備料中'?'warning':'neutral';return `<span class="tag ${cls}">${status}</span>`;}
 
