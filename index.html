@@ -26,10 +26,11 @@
         <button class="nav-item" data-view="events"><span>04</span>需求變更事件</button>
         <button class="nav-item" data-view="simulation"><span>05</span>有限／無限模擬</button>
         <button class="nav-item" data-view="network"><span>06</span>供應網路與 BOM</button>
-        <button class="nav-item" data-view="bottlenecks"><span>07</span>瓶頸分析</button>
-        <button class="nav-item" data-view="commit"><span>08</span>責任人 Commit</button>
-        <button class="nav-item" data-view="decision"><span>09</span>跨部門決策室</button>
-        <button class="nav-item" data-view="tracking"><span>10</span>執行追蹤與 Highlight</button>
+        <button class="nav-item" data-view="production"><span>07</span>產區現況</button>
+        <button class="nav-item" data-view="bottlenecks"><span>08</span>瓶頸分析</button>
+        <button class="nav-item" data-view="commit"><span>09</span>責任人 Commit</button>
+        <button class="nav-item" data-view="decision"><span>10</span>跨部門決策室</button>
+        <button class="nav-item" data-view="tracking"><span>11</span>執行追蹤與 Highlight</button>
       </nav>
 
       <div class="sidebar-footer">
@@ -411,6 +412,62 @@
               <span class="tag neutral" id="networkRelationCount"></span>
             </div>
             <div class="table-wrap"><table><thead><tr><th>來源</th><th>關係</th><th>供應項目</th><th>目的工廠</th><th>週需求</th><th>可供量</th><th>覆蓋率</th><th>前置時間</th><th>狀態</th></tr></thead><tbody id="networkRelationTable"></tbody></table></div>
+          </article>
+        </section>
+
+
+        <!-- Production Area Status -->
+        <section class="view" id="view-production">
+          <div class="kpi-grid compact-kpis" id="productionKpis"></div>
+
+          <article class="panel production-toolbar-panel">
+            <div class="panel-header stacked-mobile">
+              <div>
+                <p class="eyebrow">FACTORY LOADING & DAILY RESOURCE PLAN</p>
+                <h2>產區現況與資源時間網格</h2>
+                <p class="muted">先比較目前範圍內各廠平均 Loading，再展開單一工廠逐日檢視每一項產能資源正在生產的產品、料號、數量與負荷。</p>
+              </div>
+              <div class="production-filters">
+                <label><span>明細工廠</span><select id="productionFactorySelect"></select></label>
+                <label><span>時間範圍</span><select id="productionHorizonSelect">
+                  <option value="7">未來 7 天</option>
+                  <option value="14" selected>未來 14 天</option>
+                  <option value="21">未來 21 天</option>
+                </select></label>
+                <label><span>資源類型</span><select id="productionResourceFilter">
+                  <option value="all">全部資源</option>
+                  <option value="SMT">SMT／PCBA</option>
+                  <option value="MODULE">模組製造</option>
+                  <option value="ASSEMBLY">組裝</option>
+                  <option value="TEST">測試／校正</option>
+                </select></label>
+              </div>
+            </div>
+          </article>
+
+          <article class="panel">
+            <div class="panel-header stacked-mobile">
+              <div><p class="eyebrow">FACTORY LOADING</p><h2>各廠區 Loading 現況</h2></div>
+              <div class="loading-legend"><span><i class="load-normal"></i>正常 &lt;85%</span><span><i class="load-tight"></i>吃緊 85–100%</span><span><i class="load-over"></i>超載 &gt;100%</span></div>
+            </div>
+            <div class="factory-loading-grid" id="factoryLoadingCards"></div>
+          </article>
+
+          <article class="panel capacity-grid-panel">
+            <div class="panel-header stacked-mobile">
+              <div>
+                <p class="eyebrow">CAPACITY RESOURCE TIME GRID</p>
+                <h2 id="capacityGridTitle">產能資源逐日排程</h2>
+                <p class="muted" id="capacityGridSubtitle">每一格代表該資源當日的主要生產任務；點擊格子可查看完整排程資訊。</p>
+              </div>
+              <span class="tag neutral" id="capacityGridCount"></span>
+            </div>
+            <div class="capacity-grid-wrap">
+              <table class="capacity-grid-table">
+                <thead id="capacityGridHead"></thead>
+                <tbody id="capacityGridBody"></tbody>
+              </table>
+            </div>
           </article>
         </section>
 

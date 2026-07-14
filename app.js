@@ -209,46 +209,46 @@ function buildDemandEvents(){
 
 const baseDemandEvents = buildDemandEvents();
 
-const changeEventSeeds = [
-  ['TW01','Formosa Data Center','UPS','資料中心UPS增量並提前交期','客戶PO'],
-  ['TW02','Pacific Telecom','RTR','路由器策略客戶插單','緊急詢單'],
-  ['TW03','NorthStar Systems','FAN','AI伺服器風扇需求上修','客戶預測'],
-  ['TW04','Thai Automotive','OBC','車載充電器產品組合改變','客戶PO'],
-  ['CN01','EuroGrid GmbH','ESS','ESS專案提前轉量產','客戶PO'],
-  ['CN02','Sakura Automation','EVSE','充電樁交期提前','緊急詢單'],
-  ['CN03','Dragon Cloud','PLC','工業MCU到料延遲','客戶PO'],
-  ['CN04','ASEAN Distribution','CAM','安控攝影機促銷需求增加','客戶預測'],
-  ['CN05','Dragon Cloud','LED','LED法規包材變更','客戶PO'],
-  ['CN06','Shenzhen Mobility','MCU','馬達控制器長交期料短缺','客戶PO'],
-  ['TH01','EuroGrid GmbH','EPS','嵌入式電源海外轉單','內部預測'],
-  ['TH02','Siam Energy','VFD','變頻器專案需求提前','客戶PO'],
-  ['TH03','Thai Automotive','INV','牽引逆變器爬坡不足','客戶PO'],
-  ['TH04','ASEAN Distribution','FAS','新風系統區域促銷','客戶預測'],
-  ['TH05','Siam Energy','SOL','太陽能逆變器新品切量產','客戶PO'],
-  ['TH06','NorthStar Systems','TRF','變壓器銅材交期風險','客戶PO'],
-  ['TH07','Pacific Telecom','RTR','路由器晶片供應延遲','客戶預測'],
-  ['TH08','Sakura Automation','PRJ','投影機光學模組變更','客戶PO']
-];
-
-const baseEvents = changeEventSeeds.map((x,i) => {
-  const [factory,customer,productKey,title,source] = x;
-  const product = productLookup[productKey];
-  const sku = productCatalog.find(s=>s.productKey===productKey && s.factory===factory)?.sku || productCatalog.find(s=>s.productKey===productKey).sku;
-  const oldQty = 1800 + (i*977)%11200;
-  const increase = i%5===3?0:500+(i*263)%3600;
-  const oldDate = shiftDate('2026-08-12',i%18);
-  const newDate = i%6===4?shiftDate(oldDate,5):shiftDate(oldDate,-(1+i%7));
+function demandEventChainFrom(events,d){
+  const chain=[];const seen=new Set();let cursor=d;
+  while(cursor&&!seen.has(cursor.id)){seen.add(cursor.id);chain.unshift(cursor);cursor=cursor.parentEventId?events.find(x=>x.id===cursor.parentEventId):null;}
+  return chain;
+}
+function changeTitleFor(po,parent){
+  if(po.originMode==='預測完整轉換')return '客戶預測轉為正式客戶 PO';
+  if(po.originMode==='緊急詢單轉單')return '緊急詢單確認後轉為客戶 PO';
+  if(po.originMode==='計畫庫存消耗')return '客戶 PO 消耗既有計畫庫存';
+  return `${parent?.source||'需求事件'}轉為正式客戶 PO`;
+}
+function buildChangeEventFromDemand(events,po,index=0){
+  if(!po||po.source!=='客戶PO')return null;
+  const parent=events.find(x=>x.id===po.parentEventId);const chain=demandEventChainFrom(events,po);
+  const oldQty=parent?.qty??po.qty;const newQty=po.qty;const oldDate=parent?.demandDate||po.demandDate;const newDate=po.demandDate;
+  const qtyDelta=newQty-oldQty;const days=dateDiff(newDate,oldDate);const freeze=dateDiff(newDate,TODAY)<=14;
+  const severity=freeze&&po.priority===1?'red':(freeze||Math.abs(qtyDelta)>oldQty*.25||days<0||po.originMode==='計畫庫存消耗')?'yellow':'green';
+  const workflowStatus=po.status==='已轉內部SO'?'已核准':severity==='red'?'待決策':index%3===0?'模擬中':'待評估';
+  const chainLabel=chain.map(x=>x.source).join(' → ');
+  const stockText=po.originMode==='計畫庫存消耗'&&parent?`原計畫庫存 ${Number(parent.qty).toLocaleString('zh-TW')} 件，客戶 PO 消耗 ${Number(po.qty).toLocaleString('zh-TW')} 件，目前剩餘 ${Number(parent.remainingQty??0).toLocaleString('zh-TW')} 件。`:'';
   return {
-    id:`CE-20260714-${String(i+1).padStart(3,'0')}`,region:factoryLookup[factory].region,factory,customer,
-    model:sku,product:product.name,source,title,oldQty,newQty:oldQty+increase,oldDate,newDate,
-    oldPriority:3,priority:i%3===0?1:2,revenue:Math.round((oldQty+increase)*.42),impactRevenue:Math.round(increase*.42+300),
-    severity:i%4===0?'red':i%4===1?'yellow':i%4===2?'yellow':'green',
-    status:i%5===0?'待決策':i%5===1?'模擬中':i%5===2?'待評估':i%5===3?'已核准':'待決策',
-    freeze:i%3===0,reason:`${source}發生變化，需重新確認${product.name}的產能、物料、跨廠模組與交付承諾。`,
-    owner:['陳建宏','林怡君','王磊','Narin S.','Kanya P.'][i%5],ownerDept:['供應鏈規劃','工廠生管','區域計畫','採購管理','專案管理'][i%5],
-    versionFrom:`V${String(10+i).padStart(2,'0')}`,versionTo:`V${String(11+i).padStart(2,'0')}`
+    id:`CE-${po.id}`,region:po.region,factory:po.factory,customer:po.customer||'尚無正式客戶',model:po.sku,product:po.product,
+    source:'客戶PO',originSource:parent?.source||'需求來源',originMode:po.originMode||'',title:changeTitleFor(po,parent),
+    oldQty,newQty,oldDate,newDate,oldPriority:parent?.priority||3,priority:po.priority||2,
+    revenue:Math.round(newQty*.42),impactRevenue:Math.max(120,Math.round((Math.abs(qtyDelta)+newQty*.08)*.42)),
+    severity,status:workflowStatus,freeze,
+    reason:`需求總覽中的 ${parent?.id||'上游事件'} 已轉換為 ${po.id}。${stockText||`轉換方式為「${po.originMode||chainLabel}」，需重新確認產能、物料與交付承諾。`}`,
+    owner:['陳建宏','林怡君','王磊','Narin S.','Kanya P.'][index%5],ownerDept:['供應鏈規劃','工廠生管','區域計畫','採購管理','專案管理'][index%5],
+    versionFrom:`V${String(20+index).padStart(2,'0')}`,versionTo:`V${String(21+index).padStart(2,'0')}`,
+    demandEventId:po.id,upstreamEventId:parent?.id||'',rootDemandEventId:po.rootEventId||chain[0]?.id||po.id,
+    relationChain:chainLabel,sourceDemandStatus:parent?.status||'—',targetDemandStatus:po.status,
+    destinationCountry:po.destinationCountry,destinationCity:po.destinationCity,batchId:po.batchId
   };
-});
+}
+function buildChangeEvents(events){
+  const pos=events.filter(d=>d.source==='客戶PO');
+  return pos.map((po,i)=>buildChangeEventFromDemand(events,po,i)).filter(Boolean);
+}
+
+const baseEvents = buildChangeEvents(baseDemandEvents);
 
 const bottleneckTemplates = [
   {id:'B01',type:'capacity',name:'最終組裝線',gap:'240 小時',impactQty:1500,revenue:12000,difficulty:78,impact:88,severity:'red',dept:'製造部',owner:'張志明',options:[
@@ -300,9 +300,10 @@ function clearStored(keys){try{keys.forEach(k=>localStorage.removeItem(k));}catc
 const state={
   region:'ALL',factory:'ALL',selectedEventId:baseEvents[0].id,selectedTaskId:'B01',selectedScenario:null,
   eventSeverity:'all',eventStatus:'all',trackingFilter:'all',simDimension:'product',simulated:null,
+  productionFactory:'TW01',productionHorizon:14,productionResource:'all',
   demandSource:'all',demandStatus:'all',demandHorizon:'all',shipmentTrade:'all',shipmentTransport:'all',shipmentStatus:'all',
   networkProduct:'all',networkSku:'all',networkRelation:'all',
-  events:loadStored('ct-events-v3',structuredClone(baseEvents)),
+  events:loadStored('ct-events-v4',structuredClone(baseEvents)),
   demandEvents:loadStored('ct-demand-events-v2',structuredClone(baseDemandEvents)),
   tracking:loadStored('ct-tracking-v3',structuredClone(trackingBase)),
   commits:loadStored('ct-commits-v3',{}),decisions:loadStored('ct-decisions-v3',{})
@@ -340,7 +341,7 @@ function setupNavigation(){
 function switchView(view,preserveOverlay=false){
   $$('.nav-item').forEach(x=>x.classList.toggle('active',x.dataset.view===view));
   $$('.view').forEach(x=>x.classList.toggle('active',x.id===`view-${view}`));
-  const titles={overview:'總覽控制塔',demand:'需求總覽',shipment:'出貨總覽',events:'需求變更事件',simulation:'有限／無限模擬',network:'供應網路與 BOM',bottlenecks:'瓶頸分析',commit:'責任人 Commit',decision:'跨部門決策室',tracking:'執行追蹤與 Highlight'};
+  const titles={overview:'總覽控制塔',demand:'需求總覽',shipment:'出貨總覽',events:'需求變更事件',simulation:'有限／無限模擬',network:'供應網路與 BOM',production:'產區現況',bottlenecks:'瓶頸分析',commit:'責任人 Commit',decision:'跨部門決策室',tracking:'執行追蹤與 Highlight'};
   $('#pageTitle').textContent=titles[view]||'供需承諾控制塔';
   if(!preserveOverlay) closeOverlays();
   window.scrollTo({top:0,behavior:'smooth'});
@@ -359,8 +360,11 @@ function setupInteractions(){
   $('#shipmentTradeFilter').addEventListener('change',e=>{state.shipmentTrade=e.target.value;renderShipment();});
   $('#shipmentTransportFilter').addEventListener('change',e=>{state.shipmentTransport=e.target.value;renderShipment();});
   $('#shipmentStatusFilter').addEventListener('change',e=>{state.shipmentStatus=e.target.value;renderShipment();});
+  $('#productionFactorySelect').addEventListener('change',e=>{state.productionFactory=e.target.value;renderProduction();});
+  $('#productionHorizonSelect').addEventListener('change',e=>{state.productionHorizon=Number(e.target.value);renderProduction();});
+  $('#productionResourceFilter').addEventListener('change',e=>{state.productionResource=e.target.value;renderProduction();});
   $('#resetDemo').addEventListener('click',()=>{
-    clearStored(['ct-events-v3','ct-demand-events-v1','ct-demand-events-v2','ct-tracking-v3','ct-commits-v3','ct-decisions-v3']);
+    clearStored(['ct-events-v3','ct-events-v4','ct-demand-events-v1','ct-demand-events-v2','ct-tracking-v3','ct-commits-v3','ct-decisions-v3']);
     state.events=structuredClone(baseEvents);state.demandEvents=structuredClone(baseDemandEvents);state.tracking=structuredClone(trackingBase);state.commits={};state.decisions={};state.selectedEventId=baseEvents[0].id;state.selectedScenario=null;renderAll();toast('示範資料已重設');
   });
 }
@@ -383,7 +387,7 @@ function filteredEvents(){return state.events.filter(e=>inScope(e.factory));}
 function ensureSelectedEvent(){const list=filteredEvents();if(list.length&&!list.some(e=>e.id===state.selectedEventId))state.selectedEventId=list[0].id;}
 function selectedEvent(){return state.events.find(e=>e.id===state.selectedEventId)||state.events[0];}
 function factoryName(id){return factoryLookup[id]?.name||id;}
-function renderAll(){renderContext();renderOverview();renderDemand();renderShipment();renderEvents();renderSimulation();renderNetwork();renderBottlenecks();renderCommit();renderDecision();renderTracking();}
+function renderAll(){renderContext();renderOverview();renderDemand();renderShipment();renderEvents();renderSimulation();renderNetwork();renderProduction();renderBottlenecks();renderCommit();renderDecision();renderTracking();}
 
 function renderContext(){
   let label='全球｜18座工廠';
@@ -492,14 +496,14 @@ function handleDemandAction(id,action){
   if(action==='confirmQueue')d.status='待確認';
   if(action==='confirm')d.status='已確認';
   if(action==='toCustomerPo'||action==='consumeStock'){
-    const child=createDerivedDemandEvent(d,'客戶PO');persist();renderAll();toast(`已建立客戶PO事件 ${child.id}（${child.originMode}）`);return;
+    const child=createDerivedDemandEvent(d,'客戶PO');const change=buildChangeEventFromDemand(state.demandEvents,child,state.events.length);if(change){state.events.unshift(change);state.selectedEventId=change.id;}persist();renderAll();toast(`已建立客戶PO事件 ${child.id}，並產生需求變更事件 ${change?.id||''}`);return;
   }
   if(action==='toPlannedStock'){
     const child=createDerivedDemandEvent(d,'計畫庫存');persist();renderAll();toast(`已建立計畫庫存事件 ${child.id}`);return;
   }
   if(action==='toSo'){
     if(d.source!=='客戶PO'){toast('只有客戶PO可以轉成內部SO');return;}
-    d.status='已轉內部SO';d.soNo=`SO-${d.factory}-${String(90000+hashText(d.id)%9999).slice(-5)}`;d.shippingStatus='待排程';
+    d.status='已轉內部SO';const linkedChange=state.events.find(e=>e.demandEventId===d.id);if(linkedChange){linkedChange.targetDemandStatus=d.status;linkedChange.status='已核准';}d.soNo=`SO-${d.factory}-${String(90000+hashText(d.id)%9999).slice(-5)}`;d.shippingStatus='待排程';
     const trade=d.destinationRegion===d.region?'內銷':'外銷';d.incoterm=trade==='內銷'?'DAP':['FOB','CIF','DDP','FCA'][hashText(d.id)%4];d.transportMode=chooseTransportMode(d,trade);
   }
   if(action==='viewSo'){state.shipmentTrade='all';state.shipmentTransport='all';state.shipmentStatus='all';renderShipment();switchView('shipment');toast(`已定位 ${d.soNo}`);return;}
@@ -540,18 +544,22 @@ function renderShipment(){
 }
 function shipmentStatusTag(status){const cls=status==='延遲風險'?'danger':status==='已出貨'?'success':status==='待出貨'?'info':status==='備料中'?'warning':'neutral';return `<span class="tag ${cls}">${status}</span>`;}
 
-function eventCard(e){return `<div class="event-item ${e.id===state.selectedEventId?'active':''}" data-event-id="${e.id}"><div class="event-row"><span class="event-id">${e.id}</span>${sevTag(e.severity)}</div><div class="event-title">${e.customer}｜${e.model}－${e.title}</div><div class="event-meta"><span>${e.factory} ${factoryName(e.factory)}</span><span>${e.source}</span><span>${e.status}</span><span>${e.versionFrom} → ${e.versionTo}</span></div></div>`;}
+function eventCard(e){
+  const demand=state.demandEvents.find(d=>d.id===e.demandEventId);const audience=demand?.customer||demand?.purpose||e.customer;
+  return `<div class="event-item ${e.id===state.selectedEventId?'active':''}" data-event-id="${e.id}"><div class="event-row"><span class="event-id">${e.id}｜${e.demandEventId}</span>${sevTag(e.severity)}</div><div class="event-title">${audience}｜${e.model}－${e.title}</div><div class="event-meta"><span>${e.factory} ${factoryName(e.factory)}</span><span>${e.relationChain}</span><span>需求日 ${formatDate(e.newDate)}</span><span>${e.status}</span></div></div>`;
+}
 function bindEventCards(scope){$$(`${scope} .event-item`).forEach(el=>el.addEventListener('click',()=>{state.selectedEventId=el.dataset.eventId;state.selectedScenario=null;renderAll();if(scope==='#overviewEventList')switchView('events');}));}
 function renderEvents(){
   const items=filteredEvents().filter(e=>(state.eventSeverity==='all'||e.severity===state.eventSeverity)&&(state.eventStatus==='all'||e.status===state.eventStatus));
   $('#eventSeverityFilter').value=state.eventSeverity;$('#eventStatusFilter').value=state.eventStatus;$('#eventList').innerHTML=items.map(eventCard).join('')||'<div class="empty-state">沒有符合條件的事件</div>';bindEventCards('#eventList');
-  const e=selectedEvent();const qtyDelta=e.newQty-e.oldQty;const days=dateDiff(e.newDate,e.oldDate);
-  $('#eventDetail').innerHTML=`<div class="detail-hero"><p class="eyebrow">${e.id}・${e.factory} ${factoryName(e.factory)}</p><h2>${e.customer}｜${e.product}</h2><p>${e.title}</p></div><div class="event-row"><div><span class="event-id">事件狀態／來源</span><div style="margin-top:5px"><span class="tag neutral">${e.status}</span> <span class="tag ${sourceClass[e.source]||'info'}">${e.source}</span> ${e.freeze?'<span class="tag danger">進入凍結區</span>':'<span class="tag info">彈性區</span>'}</div></div>${sevTag(e.severity)}</div><div class="detail-grid" style="margin-top:16px"><div class="detail-stat"><span>數量變化</span><strong class="${qtyDelta>=0?'delta-up':'delta-down'}">${qtyDelta>=0?'+':''}${fmt(qtyDelta)} 件</strong></div><div class="detail-stat"><span>交期變化</span><strong>${days===0?'不變':days<0?`提前 ${Math.abs(days)} 天`:`延後 ${days} 天`}</strong></div><div class="detail-stat"><span>預估營收影響</span><strong>${money(e.impactRevenue)}</strong></div><div class="detail-stat"><span>事件負責人</span><strong>${e.owner}</strong><span>${e.ownerDept}</span></div></div><h3>需求版本差異</h3><table class="version-compare"><thead><tr><th>項目</th><th>${e.versionFrom}</th><th>${e.versionTo}</th><th>差異</th></tr></thead><tbody><tr><td>需求數量</td><td>${fmt(e.oldQty)}</td><td>${fmt(e.newQty)}</td><td>${qtyDelta>=0?'+':''}${fmt(qtyDelta)}</td></tr><tr><td>需求日期</td><td>${formatDate(e.oldDate)}</td><td>${formatDate(e.newDate)}</td><td>${days===0?'—':days<0?`提前${Math.abs(days)}天`:`延後${days}天`}</td></tr><tr><td>優先順序</td><td>P${e.oldPriority}</td><td>P${e.priority}</td><td>${e.priority<e.oldPriority?'提高':'不變'}</td></tr><tr><td>正式版本</td><td>Demand ${e.versionFrom}</td><td>Demand ${e.versionTo}</td><td>待決策</td></tr></tbody></table><div class="reason-box"><strong>變更原因：</strong>${e.reason}</div><div class="detail-actions"><button class="primary-button event-action" data-action="模擬中">接受進入模擬</button><button class="secondary-button event-action" data-action="待補件">退回補充理由</button><button class="secondary-button event-action" data-action="下期處理">併入下次週期</button><button class="danger-button event-action" data-action="待決策">緊急升級</button></div>`;
-  $$('.event-action').forEach(b=>b.addEventListener('click',()=>{e.status=b.dataset.action;persist();renderAll();toast(`事件已更新為「${e.status}」`);if(e.status==='模擬中')switchView('simulation');}));
+  const e=selectedEvent();const demand=state.demandEvents.find(d=>d.id===e.demandEventId);const upstream=state.demandEvents.find(d=>d.id===e.upstreamEventId);const qtyDelta=e.newQty-e.oldQty;const days=dateDiff(e.newDate,e.oldDate);
+  const audience=demand?.customer||demand?.purpose||e.customer;const destination=demand?.source==='客戶PO'?`${demand.destinationCountry}・${demand.destinationCity}`:'尚無正式出貨目的地';
+  $('#eventDetail').innerHTML=`<div class="detail-hero"><p class="eyebrow">${e.id}・${e.factory} ${factoryName(e.factory)}</p><h2>${audience}｜${e.product}</h2><p>${e.title}</p></div><div class="event-row"><div><span class="event-id">事件狀態／需求來源鏈</span><div style="margin-top:5px"><span class="tag neutral">${e.status}</span> <span class="tag ${sourceClass[e.originSource]||'info'}">${e.originSource}</span> <span class="chain-arrow">→</span> <span class="tag ${sourceClass[e.source]||'success'}">${e.source}</span> ${e.freeze?'<span class="tag danger">需求日進入凍結區</span>':'<span class="tag info">需求日位於彈性區</span>'}</div></div>${sevTag(e.severity)}</div><div class="demand-link-box"><div><span>需求總覽關聯</span><strong>${e.upstreamEventId||'—'} → ${e.demandEventId}</strong></div><div><span>來源批次</span><strong>${upstream?.batchId||'—'} → ${demand?.batchId||e.batchId}</strong></div><div><span>事件關係鏈</span><strong>${e.relationChain}</strong></div><button class="secondary-button event-action" data-action="viewDemand">在需求總覽查看</button></div><div class="detail-grid" style="margin-top:16px"><div class="detail-stat"><span>需求數量變化</span><strong class="${qtyDelta>=0?'delta-up':'delta-down'}">${qtyDelta>=0?'+':''}${fmt(qtyDelta)} 件</strong><span>${fmt(e.oldQty)} → ${fmt(e.newQty)}</span></div><div class="detail-stat"><span>需求日期變化</span><strong>${days===0?'同一需求日期':days<0?`提前 ${Math.abs(days)} 天`:`延後 ${days} 天`}</strong><span>${formatDateFull(e.newDate)}</span></div><div class="detail-stat"><span>需求事件狀態</span><strong>${e.sourceDemandStatus} → ${e.targetDemandStatus}</strong><span>${e.originMode}</span></div><div class="detail-stat"><span>客戶／目的地</span><strong>${audience}</strong><span>${destination}</span></div></div><h3>需求事件差異</h3><table class="version-compare"><thead><tr><th>項目</th><th>${e.upstreamEventId||'上游事件'}</th><th>${e.demandEventId}</th><th>變化</th></tr></thead><tbody><tr><td>需求來源</td><td>${upstream?.source||e.originSource}</td><td>${demand?.source||e.source}</td><td>${e.originMode}</td></tr><tr><td>事件狀態</td><td>${e.sourceDemandStatus}</td><td>${e.targetDemandStatus}</td><td>形成正式需求</td></tr><tr><td>需求數量</td><td>${fmt(e.oldQty)}</td><td>${fmt(e.newQty)}</td><td>${qtyDelta>=0?'+':''}${fmt(qtyDelta)}</td></tr><tr><td>需求日期</td><td>${formatDateFull(e.oldDate)}</td><td>${formatDateFull(e.newDate)}</td><td>${days===0?'同日':days<0?`提前${Math.abs(days)}天`:`延後${days}天`}</td></tr><tr><td>正式客戶</td><td>${upstream?.source==='客戶PO'?upstream.customer:'尚未形成'}</td><td>${demand?.customer||'—'}</td><td>${destination}</td></tr></tbody></table><div class="reason-box"><strong>事件說明：</strong>${e.reason}</div><div class="detail-actions"><button class="primary-button event-action" data-action="模擬中">接受進入模擬</button><button class="secondary-button event-action" data-action="待補件">退回補充理由</button><button class="secondary-button event-action" data-action="下期處理">併入下次週期</button><button class="danger-button event-action" data-action="待決策">緊急升級</button></div>`;
+  $$('.event-action').forEach(b=>b.addEventListener('click',()=>{if(b.dataset.action==='viewDemand'){state.region=e.region;state.factory=e.factory;$('#regionSelect').value=state.region;updateFactoryOptions();$('#factorySelect').value=state.factory;state.demandSource='all';state.demandStatus='all';renderAll();switchView('demand');toast(`已切換至 ${e.demandEventId} 所屬需求總覽`);return;}e.status=b.dataset.action;persist();renderAll();toast(`事件已更新為「${e.status}」`);if(e.status==='模擬中')switchView('simulation');}));
 }
 
 function renderSimulation(){
-  const e=selectedEvent();$('#simulationSubtitle').textContent=`${e.id}｜${e.customer} ${e.model}｜${e.source}｜需求 ${e.versionFrom} → ${e.versionTo}`;
+  const e=selectedEvent();$('#simulationSubtitle').textContent=`${e.id}｜${e.demandEventId}｜${e.customer} ${e.model}｜${e.relationChain}｜需求 ${e.versionFrom} → ${e.versionTo}`;
   const delta=Math.max(0,e.newQty-e.oldQty);$('#quantitySlider').value=state.simulated?.eventId===e.id?state.simulated.extra:delta;$('#dateSlider').value=state.simulated?.eventId===e.id?state.simulated.earlier:Math.max(0,-dateDiff(e.newDate,e.oldDate));$('#prioritySelect').value=String(e.priority);updateSimulationOutputs();runSimulation(false);
 }
 function updateSimulationOutputs(){$('#quantityOutput').textContent=`+${fmt(Number($('#quantitySlider').value))} 件`;$('#dateOutput').textContent=`提前 ${$('#dateSlider').value} 天`;}
@@ -573,6 +581,60 @@ function renderSimulationBreakdown(){
   $('#simulationBreakdownHead').innerHTML=`<tr><th>${state.simDimension==='product'?'產品':'客戶'}</th><th>${state.simDimension==='product'?'生產工廠':'產品組合'}</th><th>無限需求</th><th>有限可達</th><th>缺口</th><th>滿足率</th><th>主要限制</th></tr>`;
   $('#simulationBreakdownBody').innerHTML=data.map(x=>`<tr><td><strong>${x.name}</strong></td><td class="reason-text">${x.secondary}</td><td>${fmt(x.demand)}</td><td>${fmt(x.finite)}</td><td class="${x.gap?'delta-up':'delta-down'}">${fmt(x.gap)}</td><td><div class="coverage-cell"><strong>${x.rate.toFixed(1)}%</strong><div class="mini-progress"><i style="width:${x.rate}%"></i></div></div></td><td>${x.constraint}</td></tr>`).join('')||'<tr><td colspan="7">此範圍沒有需求資料</td></tr>';
 }
+function scopeFactoryIds(){
+  if(state.factory!=='ALL')return [state.factory];
+  if(state.region!=='ALL')return regions.find(r=>r.id===state.region).factories.map(([id])=>id);
+  return allFactories;
+}
+function capacityResourcesForFactory(factory){
+  const families=new Set((factoryProducts[factory]||[]).map(p=>p.family));
+  const resources=[{id:'SMT-01',name:'SMT 高速線',type:'SMT',capacity:20}];
+  if([...families].some(f=>['電源系統','車用電力電子','電動車動力','充電基礎設施','新能源'].includes(f)))resources.push({id:'MOD-01',name:'功率模組製造線',type:'MODULE',capacity:18});
+  else if([...families].some(f=>['熱管理與馬達'].includes(f)))resources.push({id:'MOD-01',name:'馬達繞線／轉子線',type:'MODULE',capacity:18});
+  else if([...families].some(f=>['影像與安控'].includes(f)))resources.push({id:'MOD-01',name:'光學／影像模組線',type:'MODULE',capacity:16});
+  else resources.push({id:'MOD-01',name:'控制模組製造線',type:'MODULE',capacity:18});
+  resources.push({id:'ASM-01',name:'最終組裝線 A',type:'ASSEMBLY',capacity:20},{id:'ASM-02',name:'最終組裝線 B',type:'ASSEMBLY',capacity:16});
+  const testName=[...families].some(f=>['電源系統','車用電力電子','新能源'].includes(f))?'老化／功能測試線':[...families].some(f=>f==='影像與安控')?'影像校正／功能測試線':'功能測試／校正線';
+  resources.push({id:'TST-01',name:testName,type:'TEST',capacity:18});return resources;
+}
+function effectiveFactoryDemands(factory){
+  return state.demandEvents.filter(d=>d.factory===factory&&!['已取消','已轉換','已被PO消耗'].includes(d.status)).filter(d=>d.source==='客戶PO'||(d.source==='計畫庫存'&&(d.remainingQty??0)>0)).map(d=>({...d,effectiveQty:d.source==='計畫庫存'?(d.remainingQty??d.qty):d.qty})).sort((a,b)=>a.demandDate.localeCompare(b.demandDate));
+}
+function productionPlanFor(factory,horizon=14){
+  const resources=capacityResourcesForFactory(factory);const demands=effectiveFactoryDemands(factory);const fallback=(factoryProducts[factory]||[]).flatMap(p=>productCatalog.filter(x=>x.productKey===p.key)).slice(0,12);
+  const days=Array.from({length:horizon},(_,i)=>shiftDate(TODAY,i));
+  const rows=resources.map((resource,ri)=>{
+    const cells=days.map((date,di)=>{
+      const seed=hashText(`${factory}-${resource.id}-${date}`);const demand=demands.length?demands[(seed+ri+di)%demands.length]:null;const item=demand?skuLookup[demand.sku]:(fallback.length?fallback[(seed+di)%fallback.length]:null);
+      if(seed%29===0)return {date,kind:'maintenance',load:28,hours:Math.round(resource.capacity*.28*10)/10,title:'預防保養／換線準備',sku:'—',product:'設備保養',qty:0,demandId:'—',source:'維護'};
+      if(seed%19===0)return {date,kind:'idle',load:0,hours:0,title:'待排／能力保留',sku:'—',product:'未排產',qty:0,demandId:'—',source:'能力保留'};
+      let load=58+seed%47;if(demand?.priority===1)load+=7;if(demand&&dateDiff(demand.demandDate,date)<=7)load+=6;load=Math.min(118,load);
+      const hours=Math.round(resource.capacity*load)/100;const baseQty=demand?.effectiveQty||1200;const qty=Math.max(40,Math.round(baseQty/Math.max(7,horizon)*(0.72+(seed%35)/100)));
+      return {date,kind:load>100?'over':load>=85?'tight':'normal',load,hours,title:item?.product||demand?.product||'混合產品',sku:item?.sku||demand?.sku||'—',product:item?.product||demand?.product||'混合產品',qty,demandId:demand?.id||'補庫排程',source:demand?.source||'計畫排程'};
+    });
+    return {resource,cells};
+  });
+  const cells=rows.flatMap(r=>r.cells);const working=cells.filter(c=>c.kind!=='idle');const avg=working.length?working.reduce((s,c)=>s+c.load,0)/working.length:0;
+  return {factory,days,rows,avg,over:cells.filter(c=>c.load>100).length,tight:cells.filter(c=>c.load>=85&&c.load<=100).length,maintenance:cells.filter(c=>c.kind==='maintenance').length,plannedHours:cells.reduce((s,c)=>s+c.hours,0),capacityHours:resources.reduce((s,r)=>s+r.capacity*horizon,0)};
+}
+function loadClass(load){return load>100?'over':load>=85?'tight':'normal';}
+function weekdayLabel(date){return ['日','一','二','三','四','五','六'][parseDate(date).getDay()];}
+function renderProduction(){
+  const factories=scopeFactoryIds();if(!factories.includes(state.productionFactory))state.productionFactory=factories[0]||allFactories[0];
+  $('#productionFactorySelect').innerHTML=factories.map(f=>`<option value="${f}">${f}｜${factoryName(f)}</option>`).join('');$('#productionFactorySelect').value=state.productionFactory;
+  $('#productionHorizonSelect').value=String(state.productionHorizon);$('#productionResourceFilter').value=state.productionResource;
+  const summaries=factories.map(f=>productionPlanFor(f,state.productionHorizon)).sort((a,b)=>b.avg-a.avg);const selected=productionPlanFor(state.productionFactory,state.productionHorizon);
+  const avg=summaries.length?summaries.reduce((s,x)=>s+x.avg,0)/summaries.length:0;const over=summaries.reduce((s,x)=>s+x.over,0);const tight=summaries.reduce((s,x)=>s+x.tight,0);const max=summaries[0];
+  $('#productionKpis').innerHTML=[['平均 Loading',`${avg.toFixed(1)}%`,`${factories.length}座工廠／未來${state.productionHorizon}天`,'L','tone-blue'],['超載資源日',over,'每日資源負荷超過100%','!','tone-red'],['吃緊資源日',tight,'負荷介於85%至100%','△','tone-yellow'],['最高負荷工廠',max?`${max.factory} ${max.avg.toFixed(0)}%`:'—',max?factoryName(max.factory):'目前無資料','F','tone-green']].map(kpiCard).join('');
+  $('#factoryLoadingCards').innerHTML=summaries.map(x=>`<button class="factory-loading-card ${x.factory===state.productionFactory?'active':''} ${loadClass(x.avg)}" data-factory="${x.factory}"><div class="event-row"><span class="event-id">${x.factory}</span><span class="loading-percent">${x.avg.toFixed(0)}%</span></div><strong>${factoryName(x.factory)}</strong><div class="loading-bar"><i style="width:${Math.min(100,x.avg)}%"></i></div><div class="loading-card-meta"><span>超載 ${x.over}</span><span>吃緊 ${x.tight}</span><span>${fmt(x.plannedHours)}h</span></div></button>`).join('');
+  $$('.factory-loading-card').forEach(b=>b.addEventListener('click',()=>{state.productionFactory=b.dataset.factory;renderProduction();}));
+  const rows=selected.rows.filter(r=>state.productionResource==='all'||r.resource.type===state.productionResource);$('#capacityGridTitle').textContent=`${selected.factory}｜${factoryName(selected.factory)} 產能資源逐日排程`;$('#capacityGridSubtitle').textContent=`平均 Loading ${selected.avg.toFixed(1)}%，計畫工時 ${fmt(selected.plannedHours)}／可用 ${fmt(selected.capacityHours)} 小時。`;
+  $('#capacityGridCount').textContent=`${rows.length}項資源 × ${selected.days.length}天`;
+  $('#capacityGridHead').innerHTML=`<tr><th class="resource-sticky">產能資源</th>${selected.days.map(d=>`<th><strong>${formatDate(d)}</strong><span>週${weekdayLabel(d)}</span></th>`).join('')}</tr>`;
+  $('#capacityGridBody').innerHTML=rows.map(r=>`<tr><th class="resource-sticky"><strong>${r.resource.name}</strong><span>${r.resource.id}・${r.resource.capacity}h／日</span><em>${r.resource.type}</em></th>${r.cells.map(c=>`<td><button class="capacity-cell ${c.kind}" data-resource="${r.resource.name}" data-date="${c.date}" data-product="${c.product}" data-sku="${c.sku}" data-load="${c.load}" data-hours="${c.hours}" data-qty="${c.qty}" data-demand="${c.demandId}" data-source="${c.source}"><span class="cell-load">${c.load}%</span><strong>${c.product}</strong><small>${c.sku}</small>${c.qty?`<em>${fmt(c.qty)}件</em>`:`<em>${c.title}</em>`}</button></td>`).join('')}</tr>`).join('');
+  $$('.capacity-cell').forEach(c=>c.addEventListener('click',()=>toast(`${c.dataset.date}｜${c.dataset.resource}｜${c.dataset.product} ${c.dataset.sku}｜${c.dataset.qty}件｜${c.dataset.hours}h／${c.dataset.load}%｜${c.dataset.source} ${c.dataset.demand}`)));
+}
+
 function scenarioBottlenecks(){const e=selectedEvent();return bottleneckTemplates.map((b,i)=>({...b,factory:i===0?e.factory:i===1?productLookup[skuLookup[e.model]?.productKey]?.factories?.[1]||e.factory:i===2?productLookup[skuLookup[e.model]?.productKey]?.factories?.[2]||e.factory:e.factory,impactQty:Math.max(100,Math.round((state.simulated?.gap||e.newQty*.12)*[.52,.25,.15,.08][i]))}));}
 function renderBottlenecks(){const list=scenarioBottlenecks();$('#bottleneckMatrix').innerHTML=`<span class="axis-y">交付與營收影響 ↑</span><span class="axis-x">處理難度 →</span>`+list.map(x=>`<div class="matrix-dot ${x.severity}" style="left:${x.difficulty}%;top:${100-x.impact}%">${x.name}</div>`).join('');$('#bottleneckTable').innerHTML=list.map(x=>`<tr><td><strong>${x.name}</strong><br><span class="event-id">${x.type}</span></td><td>${x.factory}<br><span class="event-id">${factoryName(x.factory)}</span></td><td>${x.gap}</td><td>${fmt(x.impactQty)}件</td><td>${money(x.revenue)}</td><td class="owner-cell"><strong>${x.owner}</strong><span>${x.dept}</span></td><td>${sevTag(x.severity)}</td></tr>`).join('');}
 function renderHotspot(sel,list){$(sel).innerHTML=list.map(x=>`<div class="hotspot-node ${x.severity}" style="left:${Math.min(86,x.difficulty)}%;top:${Math.max(12,100-x.impact)}%"><strong>${x.name}</strong><span>${x.gap}</span></div>`).join('');}
@@ -606,7 +668,7 @@ function approveSelectedScenario(){const e=selectedEvent(),scenario=buildScenari
 
 function renderTracking(){const rows=state.tracking.filter(t=>inScope(t.factory)),red=rows.filter(x=>x.severity==='red').length,yellow=rows.filter(x=>x.severity==='yellow').length,green=rows.filter(x=>x.severity==='green').length;$('#trackingKpis').innerHTML=[['紅燈異常',red,'需要立即升級','!','tone-red'],['黃燈風險',yellow,'已有對策持續追蹤','△','tone-yellow'],['正常執行',green,'依承諾進行中','✓','tone-green'],['原始承諾達成率','91.6%','排除需求版本變更','%','tone-blue']].map(kpiCard).join('');const filtered=rows.filter(r=>state.trackingFilter==='all'||r.severity===state.trackingFilter);$('#trackingTable').innerHTML=filtered.map(r=>`<tr><td><strong>${r.item}</strong><br><span class="event-id">${r.id}</span></td><td>${r.factory}<br><span class="event-id">${factoryName(r.factory)}</span></td><td>${r.owner}</td><td>${r.target}</td><td>${r.actual}</td><td class="reason-text">${r.reason}</td><td>${sevTag(r.severity)}</td><td><button class="action-link tracking-action">${r.action}</button></td></tr>`).join('')||'<tr><td colspan="8">沒有符合條件的追蹤項目</td></tr>';$$('.tracking-filter').forEach(b=>{b.classList.toggle('active',b.dataset.status===state.trackingFilter);b.onclick=()=>{state.trackingFilter=b.dataset.status;renderTracking();};});$$('.tracking-action').forEach(b=>b.addEventListener('click',()=>toast(`已建立處置任務：${b.textContent}`)));}
 
-function persist(){saveStored('ct-events-v3',state.events);saveStored('ct-demand-events-v2',state.demandEvents);saveStored('ct-tracking-v3',state.tracking);saveStored('ct-commits-v3',state.commits);saveStored('ct-decisions-v3',state.decisions);}
+function persist(){saveStored('ct-events-v4',state.events);saveStored('ct-demand-events-v2',state.demandEvents);saveStored('ct-tracking-v3',state.tracking);saveStored('ct-commits-v3',state.commits);saveStored('ct-decisions-v3',state.decisions);}
 function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('show');clearTimeout(toast.timer);toast.timer=setTimeout(()=>t.classList.remove('show'),2600);}
 function closeOverlays(){$('#sidebar').classList.remove('open');$('#overlay').classList.remove('show');$('#tourModal').classList.remove('show');}
 function parseDate(v){return new Date(`${String(v).replaceAll('/','-')}T00:00:00`);}
@@ -623,8 +685,9 @@ function setupTour(){
     {view:'events',title:'4. 需求變更事件',text:'重大變更不直接覆蓋舊版本，而是保留數量、日期、來源與原因差異。',path:['版本差異','門檻判定','接受／退回／升級']},
     {view:'simulation',title:'5. 有限與無限模擬',text:'以相同快照比較需求與實際可達量，並可切換BY產品或BY客戶。',path:['無限需求','有限可達','產品／客戶檢視']},
     {view:'network',title:'6. 供應網路與BOM',text:'展開多階BOM，查看外部供應、友廠模組、SMT代工與跨廠調撥。',path:['多階BOM','友廠協同','供給覆蓋率']},
-    {view:'bottlenecks',title:'7. 瓶頸與責任',text:'找出產能、材料、SMT及人力瓶頸並指派責任人。',path:['風險矩陣','責任人','Commit']},
-    {view:'decision',title:'8. 決策與追蹤',text:'主管比較跨廠協同、加急與客戶取捨方案，核准後進入執行追蹤。',path:['比較方案','核准版本','Highlight']}
+    {view:'production',title:'7. 產區現況',text:'比較各廠Loading，並用資源×日期時間網格查看每日正在生產的產品與料號。',path:['廠區負荷','產能資源','逐日排程']},
+    {view:'bottlenecks',title:'8. 瓶頸與責任',text:'找出產能、材料、SMT及人力瓶頸並指派責任人。',path:['風險矩陣','責任人','Commit']},
+    {view:'decision',title:'9. 決策與追蹤',text:'主管比較跨廠協同、加急與客戶取捨方案，核准後進入執行追蹤。',path:['比較方案','核准版本','Highlight']}
   ];let idx=0;const show=()=>{const s=steps[idx];$('#tourStep').innerHTML=`<h3>${s.title}</h3><p>${s.text}</p><div class="step-path">${s.path.map(x=>`<span>${x}</span>`).join('')}</div>`;$('#tourProgress').textContent=`${idx+1} / ${steps.length}`;$('#tourPrev').disabled=idx===0;$('#tourNext').textContent=idx===steps.length-1?'完成':'下一步';switchView(s.view,true);};$('#guidedTour').addEventListener('click',()=>{idx=0;$('#overlay').classList.add('show');$('#tourModal').classList.add('show');show();});$('#tourClose').addEventListener('click',closeOverlays);$('#tourPrev').addEventListener('click',()=>{if(idx>0){idx--;show();}});$('#tourNext').addEventListener('click',()=>{if(idx<steps.length-1){idx++;show();}else closeOverlays();});
 }
 
