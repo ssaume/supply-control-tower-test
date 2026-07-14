@@ -9,7 +9,7 @@
   <meta http-equiv="Expires" content="0" />
   <meta name="description" content="跨廠區產品、BOM、供應網路、供需變更、瓶頸、承諾與決策管理互動原型" />
   <title>供需承諾控制塔｜互動原型</title>
-  <link rel="stylesheet" href="styles-v20260714-route3.css" />
+  <link rel="stylesheet" href="styles-v20260714-demand6.css" />
 </head>
 <body>
   <div class="app-shell">
@@ -59,7 +59,7 @@
 
       <div class="sidebar-footer">
         <div class="system-status"><i></i>原型資料已同步</div>
-        <div class="build-version">Build 2026.07.14-ROUTE3</div>
+        <div class="build-version">Build 2026.07.14-DEMAND6</div>
         <button id="resetDemo" class="secondary-button full">重設示範資料</button>
       </div>
     </aside>
@@ -175,6 +175,7 @@
                   <option value="all">全部來源</option>
                   <option value="客戶預測">客戶預測</option>
                   <option value="內部預測">內部預測</option>
+                  <option value="內部需求">內部需求</option>
                   <option value="客戶PO">客戶 PO</option>
                   <option value="計畫庫存">計畫庫存</option>
                   <option value="緊急詢單">緊急詢單</option>
@@ -200,6 +201,18 @@
             </div>
           </article>
 
+          <article class="panel demand-flow-panel">
+            <div class="panel-header stacked-mobile">
+              <div>
+                <p class="eyebrow">DEMAND SOURCE CONVERSION</p>
+                <h2>需求來源轉換關聯圖</h2>
+                <p class="muted">節點顯示目前範圍內的需求事件數；連線數量代表已發生的來源轉換。點擊節點可直接篩選需求來源。</p>
+              </div>
+              <button class="secondary-button" id="resetDemandSourceGraph">顯示全部來源</button>
+            </div>
+            <div id="demandConversionGraph" class="demand-conversion-graph"></div>
+          </article>
+
           <article class="panel">
             <div class="panel-header stacked-mobile">
               <div><p class="eyebrow">DATE-SPLIT EVENTS</p><h2>需求事件明細</h2></div>
@@ -207,7 +220,7 @@
             </div>
             <div class="table-wrap demand-table-wrap">
               <table class="demand-table">
-                <thead><tr><th>需求事件／來源批次</th><th>需求日期</th><th>來源</th><th>狀態</th><th>事件關係鏈</th><th>客戶／用途</th><th>產品／成品料號</th><th>需求量</th><th>內部 SO</th><th>操作</th></tr></thead>
+                <thead><tr><th>需求事件／來源批次</th><th>需求日期</th><th>來源</th><th>狀態</th><th>提出／版本</th><th>事件關係鏈</th><th>客戶／用途</th><th>產品／成品料號</th><th>需求量</th><th>內部 SO</th><th>操作</th></tr></thead>
                 <tbody id="demandEventTable"></tbody>
               </table>
             </div>
@@ -470,9 +483,9 @@
               </div>
               <div class="routing-view-actions">
                 <div class="segmented-control route-view-toggle" id="routingViewToggle" aria-label="生產供應途程呈現方式">
-                  <button class="active" data-route-view="sequence">途程卡片</button>
-                  <button data-route-view="network">途程網路圖</button>
-                  <button data-route-view="ecosystem">站點生態圖</button>
+                  <button class="segment active" data-route-view="sequence">途程卡片</button>
+                  <button class="segment" data-route-view="network">途程網路圖</button>
+                  <button class="segment" data-route-view="ecosystem">站點生態圖</button>
                 </div>
                 <div class="route-legend"><span><i class="route-work"></i>生產工單</span><span><i class="route-outsource"></i>委外／友廠</span><span><i class="route-purchase"></i>採購供給</span></div>
               </div>
@@ -625,6 +638,6 @@
     </div>
   </div>
 
-  <script src="app-v20260714-route3.js"></script>
+  <script src="app-v20260714-demand6.js"></script>
 </body>
 </html>
