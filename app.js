@@ -302,7 +302,8 @@ const state={
   eventSeverity:'all',eventStatus:'all',trackingFilter:'all',simDimension:'product',simulated:null,
   productionFactory:'TW01',productionHorizon:14,productionResource:'all',
   demandSource:'all',demandStatus:'all',demandHorizon:'all',shipmentTrade:'all',shipmentTransport:'all',shipmentStatus:'all',
-  expandedDemandId:'',expandedShipmentId:'',selectedWorkOrderByEvent:{},
+  expandedDemandId:'',expandedShipmentId:'',selectedWorkOrderByEvent:{},selectedFulfillmentByEvent:{},fulfillmentViewMode:'tile',
+  routeEventId:baseDemandEvents.find(x=>x.source==='客戶PO')?.id||baseDemandEvents[0]?.id||'',
   networkProduct:'all',networkSku:'all',networkRelation:'all',
   events:loadStored('ct-events-v4',structuredClone(baseEvents)),
   demandEvents:loadStored('ct-demand-events-v2',structuredClone(baseDemandEvents)),
@@ -342,7 +343,7 @@ function setupNavigation(){
 function switchView(view,preserveOverlay=false){
   $$('.nav-item').forEach(x=>x.classList.toggle('active',x.dataset.view===view));
   $$('.view').forEach(x=>x.classList.toggle('active',x.id===`view-${view}`));
-  const titles={overview:'總覽控制塔',demand:'需求總覽',shipment:'出貨總覽',events:'需求變更事件',simulation:'有限／無限模擬',network:'供應網路與 BOM',production:'產區現況',bottlenecks:'瓶頸分析',commit:'責任人 Commit',decision:'跨部門決策室',tracking:'執行追蹤與 Highlight'};
+  const titles={overview:'總覽控制塔',demand:'需求總覽',shipment:'出貨總覽',events:'需求變更事件',simulation:'有限／無限模擬',network:'供應網路與 BOM',routing:'生產供應途程',production:'產區現況',bottlenecks:'瓶頸分析',commit:'責任人 Commit',decision:'跨部門決策室',tracking:'執行追蹤與 Highlight'};
   $('#pageTitle').textContent=titles[view]||'供需承諾控制塔';
   if(!preserveOverlay) closeOverlays();
   window.scrollTo({top:0,behavior:'smooth'});
@@ -361,12 +362,13 @@ function setupInteractions(){
   $('#shipmentTradeFilter').addEventListener('change',e=>{state.shipmentTrade=e.target.value;renderShipment();});
   $('#shipmentTransportFilter').addEventListener('change',e=>{state.shipmentTransport=e.target.value;renderShipment();});
   $('#shipmentStatusFilter').addEventListener('change',e=>{state.shipmentStatus=e.target.value;renderShipment();});
+  $('#routingEventSelect').addEventListener('change',e=>{state.routeEventId=e.target.value;renderRouting();});
   $('#productionFactorySelect').addEventListener('change',e=>{state.productionFactory=e.target.value;renderProduction();});
   $('#productionHorizonSelect').addEventListener('change',e=>{state.productionHorizon=Number(e.target.value);renderProduction();});
   $('#productionResourceFilter').addEventListener('change',e=>{state.productionResource=e.target.value;renderProduction();});
   $('#resetDemo').addEventListener('click',()=>{
     clearStored(['ct-events-v3','ct-events-v4','ct-demand-events-v1','ct-demand-events-v2','ct-tracking-v3','ct-commits-v3','ct-decisions-v3']);
-    state.events=structuredClone(baseEvents);state.demandEvents=structuredClone(baseDemandEvents);state.tracking=structuredClone(trackingBase);state.commits={};state.decisions={};state.selectedEventId=baseEvents[0].id;state.selectedScenario=null;state.expandedDemandId='';state.expandedShipmentId='';state.selectedWorkOrderByEvent={};renderAll();toast('示範資料已重設');
+    state.events=structuredClone(baseEvents);state.demandEvents=structuredClone(baseDemandEvents);state.tracking=structuredClone(trackingBase);state.commits={};state.decisions={};state.selectedEventId=baseEvents[0].id;state.selectedScenario=null;state.expandedDemandId='';state.expandedShipmentId='';state.selectedWorkOrderByEvent={};state.selectedFulfillmentByEvent={};state.fulfillmentViewMode='tile';state.routeEventId=baseDemandEvents.find(x=>x.source==='客戶PO')?.id||baseDemandEvents[0]?.id||'';renderAll();toast('示範資料已重設');
   });
 }
 function setupNetworkControls(){
@@ -388,7 +390,7 @@ function filteredEvents(){return state.events.filter(e=>inScope(e.factory));}
 function ensureSelectedEvent(){const list=filteredEvents();if(list.length&&!list.some(e=>e.id===state.selectedEventId))state.selectedEventId=list[0].id;}
 function selectedEvent(){return state.events.find(e=>e.id===state.selectedEventId)||state.events[0];}
 function factoryName(id){return factoryLookup[id]?.name||id;}
-function renderAll(){renderContext();renderOverview();renderDemand();renderShipment();renderEvents();renderSimulation();renderNetwork();renderProduction();renderBottlenecks();renderCommit();renderDecision();renderTracking();}
+function renderAll(){renderContext();renderOverview();renderDemand();renderShipment();renderEvents();renderSimulation();renderNetwork();renderRouting();renderProduction();renderBottlenecks();renderCommit();renderDecision();renderTracking();}
 
 function renderContext(){
   let label='全球｜18座工廠';
@@ -519,55 +521,96 @@ function tileMeta(label,value){
 function metricInfoTile(label,value,note,tone='blue'){
   return `<article class="standard-info-tile metric-info-tile tone-${tone}"><span class="metric-info-label">${label}</span><strong>${value}</strong><small>${note}</small></article>`;
 }
-function workOrderTile(w,event,context,selected=false,compact=false){
-  return `<button type="button" class="standard-info-tile order-info-tile work-order-link ${selected?'selected':''} ${compact?'compact':''}" data-event="${event.id}" data-work-order="${w.id}" data-context="${context}">
-    <div class="info-tile-top"><div class="info-tile-badges"><span class="tag ${w.kind==='委外工單'?'warning':'info'}">${w.kind}</span><span class="tag neutral">BOM L${w.level}</span></div>${fulfillmentStatusTag(w.status)}</div>
+function plantLabel(plant){
+  const f=factoryLookup[plant];return f?`${plant}｜${f.name}`:plant;
+}
+function fulfillmentRecords(f){
+  return [
+    ...f.workOrders.map(x=>({type:'work',id:x.id,due:x.due,start:x.start,bomId:x.bomId,parentBomId:x.parentBomId,data:x})),
+    ...f.purchaseOrders.map(x=>({type:'purchase',id:x.id,due:x.due,start:x.due,bomId:x.bomId,parentBomId:x.parentBomId,data:x}))
+  ].sort((a,b)=>String(a.due).localeCompare(String(b.due))||String(a.start).localeCompare(String(b.start))||a.id.localeCompare(b.id));
+}
+function isBomAncestor(ancestorBom,childBom,parentMap){
+  if(!ancestorBom||!childBom)return false;
+  let cursor=childBom;const seen=new Set();
+  while(cursor&&!seen.has(cursor)){if(cursor===ancestorBom)return true;seen.add(cursor);cursor=parentMap.get(cursor)||'';}
+  return false;
+}
+function fulfillmentSelection(f,event){
+  const records=fulfillmentRecords(f);
+  const stored=state.selectedFulfillmentByEvent[event.id];
+  const selected=stored?records.find(r=>r.type===stored.type&&r.id===stored.id)||null:null;
+  return {records,selected};
+}
+function fulfillmentVisualStates(f,selected){
+  const records=fulfillmentRecords(f);const result=new Map();
+  if(!selected){records.forEach(r=>result.set(`${r.type}:${r.id}`,'normal'));return result;}
+  const parentMap=new Map();
+  [...f.nodes,...f.workOrders,...f.purchaseOrders].forEach(x=>{if(x.bomId||x.id)parentMap.set(x.bomId||x.id,x.parentBomId||x.parentId||'');});
+  records.forEach(r=>{
+    let related=false;
+    if(r.type===selected.type&&r.id===selected.id)result.set(`${r.type}:${r.id}`,'selected');
+    else{
+      if(selected.type==='work'){
+        related=isBomAncestor(r.bomId,selected.bomId,parentMap)||isBomAncestor(selected.bomId,r.bomId,parentMap);
+      }else{
+        const parent=selected.parentBomId;
+        related=r.bomId===parent||r.parentBomId===parent||isBomAncestor(r.bomId,parent,parentMap);
+      }
+      result.set(`${r.type}:${r.id}`,related?'related':'dimmed');
+    }
+  });
+  return result;
+}
+function visualClass(visual){return visual==='selected'?'selected':visual==='related'?'related':visual==='dimmed'?'dimmed':'';}
+function workOrderTile(w,event,context,visual='normal',compact=false,sequence=''){
+  return `<button type="button" class="standard-info-tile order-info-tile timeline-order-tile fulfillment-item-link ${visualClass(visual)} ${compact?'compact':''}" data-event="${event.id}" data-item-id="${w.id}" data-item-type="work" data-context="${context}">
+    <div class="info-tile-top"><div class="info-tile-badges">${sequence?`<span class="timeline-seq">${sequence}</span>`:''}<span class="tag ${w.kind==='委外工單'?'warning':'info'}">${w.kind}</span><span class="tag neutral">BOM L${w.level}</span></div>${fulfillmentStatusTag(w.status)}</div>
     <div class="info-tile-title"><strong>${w.item}</strong><span>${w.id}</span><small>${w.bomId}</small></div>
     <div class="info-tile-meta-grid">
-      ${tileMeta('生產單位',`${w.plant}｜${factoryName(w.plant)||w.plant}`)}
+      ${tileMeta('生產單位',plantLabel(w.plant))}
       ${tileMeta('計畫數量',`${fmt(w.qty)} 件`)}
       ${tileMeta('開始日期',formatDate(w.start))}
-      ${tileMeta('完成日期',formatDate(w.due))}
+      ${tileMeta('需求完成日',formatDate(w.due))}
     </div>
     <div class="info-tile-footer"><span>${w.relationLabel}</span>${progressHtml(w.progress,'生產')}</div>
   </button>`;
 }
-function purchaseOrderTile(po,compact=false){
+function purchaseOrderTile(po,event,context,visual='normal',compact=false,sequence=''){
   const normalized=po.status==='已到料'?'已完成':po.status==='到料風險'?'延遲風險':'執行中';
-  return `<article class="standard-info-tile order-info-tile purchase-info-tile ${compact?'compact':''}">
-    <div class="info-tile-top"><div class="info-tile-badges"><span class="tag success">採購 PO</span><span class="tag neutral">BOM L${po.level}</span></div>${fulfillmentStatusTag(normalized)}</div>
+  return `<button type="button" class="standard-info-tile order-info-tile timeline-order-tile purchase-info-tile fulfillment-item-link ${visualClass(visual)} ${compact?'compact':''}" data-event="${event.id}" data-item-id="${po.id}" data-item-type="purchase" data-context="${context}">
+    <div class="info-tile-top"><div class="info-tile-badges">${sequence?`<span class="timeline-seq">${sequence}</span>`:''}<span class="tag success">採購 PO</span><span class="tag neutral">BOM L${po.level}</span></div>${fulfillmentStatusTag(normalized)}</div>
     <div class="info-tile-title"><strong>${po.item}</strong><span>${po.id}</span><small>${po.bomId}</small></div>
     <div class="info-tile-meta-grid">
       ${tileMeta('供應來源',po.vendor)}
       ${tileMeta('訂購數量',`${fmt(po.qty)} 件`)}
       ${tileMeta('已到數量',`${fmt(po.received)} 件`)}
-      ${tileMeta('承諾到料',formatDate(po.due))}
+      ${tileMeta('需求到料日',formatDate(po.due))}
     </div>
     <div class="info-tile-footer"><span>${po.relationLabel}</span>${progressHtml(po.progress,'到料')}</div>
-  </article>`;
+  </button>`;
 }
-function selectedWorkOrderTile(w){
-  return `<article class="standard-info-tile order-info-tile selected current-order-tile">
-    <div class="info-tile-top"><div class="info-tile-badges"><span class="tag ${w.kind==='委外工單'?'warning':'info'}">目前工單</span><span class="tag neutral">BOM L${w.level}</span></div>${fulfillmentStatusTag(w.status)}</div>
-    <div class="info-tile-title"><strong>${w.item}</strong><span>${w.id}</span><small>${w.bomId}</small></div>
-    <div class="info-tile-meta-grid">
-      ${tileMeta('生產單位',`${w.plant}｜${factoryName(w.plant)||w.plant}`)}
-      ${tileMeta('計畫數量',`${fmt(w.qty)} 件`)}
-      ${tileMeta('開始日期',formatDate(w.start))}
-      ${tileMeta('完成日期',formatDate(w.due))}
-    </div>
-    <div class="info-tile-footer"><span>${w.relationLabel}</span>${progressHtml(w.progress,'生產')}</div>
-  </article>`;
+function staticWorkOrderTile(w){return workOrderTile(w,{id:w.eventId},'dependency','selected',true,'');}
+function staticPurchaseOrderTile(po){return purchaseOrderTile(po,{id:po.eventId},'dependency','selected',true,'');}
+function fulfillmentList(records,f,event,context,states){
+  const rows=records.map((r,i)=>{
+    const x=r.data,visual=states.get(`${r.type}:${r.id}`)||'normal';
+    const type=r.type==='work'?x.kind:'採購 PO';
+    const owner=r.type==='work'?plantLabel(x.plant):x.vendor;
+    const qty=r.type==='work'?`${fmt(x.qty)} 件`:`${fmt(x.received)} / ${fmt(x.qty)} 件`;
+    const status=r.type==='work'?x.status:x.status;
+    const progress=r.type==='work'?x.progress:x.progress;
+    return `<tr tabindex="0" class="fulfillment-list-row fulfillment-item-link ${visualClass(visual)}" data-event="${event.id}" data-item-id="${r.id}" data-item-type="${r.type}" data-context="${context}"><td>${String(i+1).padStart(2,'0')}</td><td><span class="tag ${r.type==='purchase'?'success':x.kind==='委外工單'?'warning':'info'}">${type}</span><br>${fulfillmentStatusTag(status==='已到料'?'已完成':status==='到料風險'?'延遲風險':status)}</td><td><strong>${r.id}</strong><br><span class="event-id">BOM L${x.level}・${x.bomId}</span></td><td><strong>${x.item}</strong><br><span class="event-id">${x.relationLabel}</span></td><td>${owner}</td><td>${qty}</td><td><strong>${formatDateFull(r.due)}</strong>${r.type==='work'?`<br><span class="event-id">開始 ${formatDate(x.start)}</span>`:''}</td><td>${progressHtml(progress,r.type==='work'?'生產':'到料')}</td></tr>`;
+  }).join('');
+  return `<div class="table-wrap fulfillment-list-wrap"><table class="fulfillment-list-table"><thead><tr><th>順序</th><th>類型／狀態</th><th>單號／BOM</th><th>項目</th><th>責任單位／供應商</th><th>數量</th><th>需求時間</th><th>進度</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 function fulfillmentPanel(event,context){
   const f=buildFulfillment(event);const summary=fulfillmentSummary(f);
-  const selectedId=state.selectedWorkOrderByEvent[event.id]||f.workOrders[0]?.id||'';
-  const selected=f.workOrders.find(x=>x.id===selectedId)||f.workOrders[0];
-  if(selected)state.selectedWorkOrderByEvent[event.id]=selected.id;
-  const workTiles=f.workOrders.map(w=>workOrderTile(w,event,context,w.id===selected?.id)).join('');
-  const poTiles=f.purchaseOrders.map(po=>purchaseOrderTile(po)).join('');
+  const {records,selected}=fulfillmentSelection(f,event);const states=fulfillmentVisualStates(f,selected);
+  const tileHtml=records.map((r,i)=>r.type==='work'?workOrderTile(r.data,event,context,states.get(`work:${r.id}`),false,String(i+1).padStart(2,'0')):purchaseOrderTile(r.data,event,context,states.get(`purchase:${r.id}`),false,String(i+1).padStart(2,'0'))).join('');
+  const content=state.fulfillmentViewMode==='list'?fulfillmentList(records,f,event,context,states):`<div class="standard-tile-grid order-tile-grid fulfillment-timeline-grid">${tileHtml||'<div class="empty-state">尚未產生履行單據</div>'}</div>`;
   return `<div class="fulfillment-panel" data-fulfillment-event="${event.id}">
-    <div class="fulfillment-head"><div><p class="eyebrow">DEMAND FULFILLMENT TRACE</p><h3>${event.id}｜${event.product} ${event.sku}</h3><p>依生產 BOM 與跨廠供應關係追蹤工單、委外與採購到料。資訊磚採相同欄位規格，點擊工單可查看直接下階關係。</p></div><span class="tag ${summary.risk?'danger':'success'}">${summary.risk?`${summary.risk}項風險`:'履行正常'}</span></div>
+    <div class="fulfillment-head"><div><p class="eyebrow">DEMAND FULFILLMENT TRACE</p><h3>${event.id}｜${event.product} ${event.sku}</h3><p>工單與採購 PO 已依需求時間由上往下排序。點擊任一單據，可突出同一 BOM 分支中的對應工單與採購項目，其他項目會淡出。</p></div><span class="tag ${summary.risk?'danger':'success'}">${summary.risk?`${summary.risk}項風險`:'履行正常'}</span></div>
     <div class="fulfillment-kpis standard-tile-grid summary-tile-grid">
       ${metricInfoTile('生產平均進度',`${summary.workAvg.toFixed(0)}%`,'所有內製與委外工單','blue')}
       ${metricInfoTile('物料到料率',`${summary.matRate.toFixed(0)}%`,'所有採購 PO 加權','green')}
@@ -575,22 +618,38 @@ function fulfillmentPanel(event,context){
       ${metricInfoTile('委外工單',summary.outsource,'友廠或協力廠承接','yellow')}
       ${metricInfoTile('採購 PO',summary.purchase,'外購料與現成模組','green')}
     </div>
-    <div class="fulfillment-grid">
-      <section class="fulfillment-section"><div class="subsection-title"><div><h4>對應生產工單</h4><span>標準資訊磚：類型、狀態、BOM、責任單位、數量、日期與進度</span></div><span class="tag neutral">${f.workOrders.length}張</span></div><div class="standard-tile-grid order-tile-grid">${workTiles||'<div class="empty-state">尚未產生工單</div>'}</div></section>
-      <section class="fulfillment-section"><div class="subsection-title"><div><h4>物料採購清單</h4><span>標準資訊磚：狀態、BOM、供應商、數量、承諾日與到料進度</span></div><span class="tag neutral">${f.purchaseOrders.length}張</span></div><div class="standard-tile-grid order-tile-grid">${poTiles||'<div class="empty-state">無外購項目</div>'}</div></section>
+    <div class="fulfillment-control-bar">
+      <div><h4>工單與採購需求時程</h4><span>${records.length} 張單據・最早需求 ${records[0]?formatDateFull(records[0].due):'—'}・最晚需求 ${records.at(-1)?formatDateFull(records.at(-1).due):'—'}</span></div>
+      <div class="fulfillment-actions"><div class="segmented-control compact-segmented"><button class="segment fulfillment-view-toggle ${state.fulfillmentViewMode==='tile'?'active':''}" data-mode="tile">資訊磚</button><button class="segment fulfillment-view-toggle ${state.fulfillmentViewMode==='list'?'active':''}" data-mode="list">清單列表</button></div><button class="primary-button production-route-jump" data-event="${event.id}">生產供應途程</button></div>
     </div>
-    ${renderWorkOrderDependencies(f,selected)}
+    <section class="fulfillment-section fulfillment-timeline-section">${content}</section>
+    ${renderFulfillmentDependencies(f,selected)}
   </div>`;
 }
-function renderWorkOrderDependencies(f,selected){
-  if(!selected)return '<div class="empty-state">沒有可檢視的生產工單</div>';
-  const childWorks=f.workOrders.filter(w=>w.parentBomId===selected.bomId&&w.id!==selected.id);
-  const childPos=f.purchaseOrders.filter(po=>po.parentBomId===selected.bomId);
-  const descendants=[...childWorks.map(x=>({...x,dependencyType:'work'})),...childPos.map(x=>({...x,dependencyType:'purchase'}))];
-  const cards=descendants.map(x=>x.dependencyType==='work'?workOrderTile(x,f.event,'dependency',false,true):purchaseOrderTile(x,true)).join('');
-  const path=[];let cursor=selected;const seen=new Set();
+function renderFulfillmentDependencies(f,selected){
+  if(!selected)return '<div class="empty-state">沒有可檢視的工單或採購 PO</div>';
+  if(selected.type==='purchase'){
+    const po=selected.data;const consumer=f.workOrders.find(w=>w.bomId===po.parentBomId)||f.workOrders.find(w=>w.level===0);
+    const siblingWorks=f.workOrders.filter(w=>w.parentBomId===po.parentBomId);
+    const siblingPos=f.purchaseOrders.filter(x=>x.parentBomId===po.parentBomId&&x.id!==po.id);
+    const cards=[...(consumer?[{...consumer,dependencyType:'work'}]:[]),...siblingWorks.filter(x=>x.id!==consumer?.id).map(x=>({...x,dependencyType:'work'})),...siblingPos.map(x=>({...x,dependencyType:'purchase'}))]
+      .sort((a,b)=>String(a.due).localeCompare(String(b.due)))
+      .map(x=>x.dependencyType==='work'?workOrderTile(x,f.event,'dependency','related',true):purchaseOrderTile(x,f.event,'dependency','related',true)).join('');
+    return `<section class="dependency-panel"><div class="dependency-header"><div><p class="eyebrow">PURCHASE-TO-WORK ORDER TRACE</p><h4>${po.id}｜${po.item}</h4><p>此採購 PO 的供給去向，以及同一裝配節點需要同步齊套的工單與採購項目。</p></div><div class="dependency-meta"><span>採購 PO</span><strong>BOM L${po.level}</strong><span>${po.relationLabel}</span></div></div><div class="dependency-body standardized-dependency-body"><div class="dependency-current">${staticPurchaseOrderTile(po)}</div><div class="dependency-flow-label"><span>供給至／共同齊套</span><strong>↓</strong></div><div class="standard-tile-grid dependency-list">${cards||'<div class="leaf-node"><strong>尚未對應消耗工單</strong><span>請確認 BOM 或採購分配關係。</span></div>'}</div></div></section>`;
+  }
+  const work=selected.data;
+  const childWorks=f.workOrders.filter(w=>w.parentBomId===work.bomId&&w.id!==work.id);
+  const childPos=f.purchaseOrders.filter(po=>po.parentBomId===work.bomId);
+  const descendants=[...childWorks.map(x=>({...x,dependencyType:'work'})),...childPos.map(x=>({...x,dependencyType:'purchase'}))].sort((a,b)=>String(a.due).localeCompare(String(b.due)));
+  const cards=descendants.map(x=>x.dependencyType==='work'?workOrderTile(x,f.event,'dependency','related',true):purchaseOrderTile(x,f.event,'dependency','related',true)).join('');
+  const path=[];let cursor=work;const seen=new Set();
   while(cursor&&!seen.has(cursor.id)){seen.add(cursor.id);path.unshift(cursor);cursor=f.workOrders.find(w=>w.bomId===cursor.parentBomId);}
-  return `<section class="dependency-panel"><div class="dependency-header"><div><p class="eyebrow">BOM & SUPPLY CHAIN DRILLDOWN</p><h4>${selected.id}｜${selected.item}</h4><p>${path.map(x=>x.item).join(' → ')}</p></div><div class="dependency-meta"><span>${selected.kind}</span><strong>BOM L${selected.level}</strong><span>${selected.relationLabel}</span></div></div><div class="dependency-body standardized-dependency-body"><div class="dependency-current">${selectedWorkOrderTile(selected)}</div><div class="dependency-flow-label"><span>直接下階供應</span><strong>↓</strong></div><div class="standard-tile-grid dependency-list">${cards||'<div class="leaf-node"><strong>此工單已是製造葉節點</strong><span>沒有更下階工單或採購 PO。</span></div>'}</div></div></section>`;
+  return `<section class="dependency-panel"><div class="dependency-header"><div><p class="eyebrow">BOM & SUPPLY CHAIN DRILLDOWN</p><h4>${work.id}｜${work.item}</h4><p>${path.map(x=>x.item).join(' → ')}</p></div><div class="dependency-meta"><span>${work.kind}</span><strong>BOM L${work.level}</strong><span>${work.relationLabel}</span></div></div><div class="dependency-body standardized-dependency-body"><div class="dependency-current">${staticWorkOrderTile(work)}</div><div class="dependency-flow-label"><span>直接下階供應</span><strong>↓</strong></div><div class="standard-tile-grid dependency-list">${cards||'<div class="leaf-node"><strong>此工單已是製造葉節點</strong><span>沒有更下階工單或採購 PO。</span></div>'}</div></div></section>`;
+}
+function selectFulfillmentItem(context,eventId,type,id){
+  state.selectedFulfillmentByEvent[eventId]={type,id};
+  if(type==='work')state.selectedWorkOrderByEvent[eventId]=id;
+  context==='demand'?renderDemand():renderShipment();
 }
 function bindFulfillmentInteractions(context){
   const root=context==='demand'?'#view-demand':'#view-shipment';
@@ -608,15 +667,80 @@ function bindFulfillmentInteractions(context){
     else state.expandedShipmentId=state.expandedShipmentId===id?'':id;
     context==='demand'?renderDemand():renderShipment();
   }));
-  $$(`${root} .fulfillment-order-row`).forEach(row=>row.addEventListener('click',ev=>{
-    if(ev.target.closest('button,a'))return;
-    state.selectedWorkOrderByEvent[row.dataset.event]=row.dataset.workOrder;
-    context==='demand'?renderDemand():renderShipment();
-  }));
-  $$(`${root} .work-order-link`).forEach(btn=>btn.addEventListener('click',ev=>{
-    ev.stopPropagation();state.selectedWorkOrderByEvent[btn.dataset.event]=btn.dataset.workOrder;
-    context==='demand'?renderDemand():renderShipment();
-  }));
+  $$(`${root} .fulfillment-item-link`).forEach(el=>{
+    const activate=ev=>{ev.stopPropagation();selectFulfillmentItem(context,el.dataset.event,el.dataset.itemType,el.dataset.itemId);};
+    el.addEventListener('click',activate);el.addEventListener('keydown',ev=>{if(ev.key==='Enter'||ev.key===' '){ev.preventDefault();activate(ev);}});
+  });
+  $$(`${root} .fulfillment-view-toggle`).forEach(btn=>btn.addEventListener('click',ev=>{ev.stopPropagation();state.fulfillmentViewMode=btn.dataset.mode;context==='demand'?renderDemand():renderShipment();}));
+  $$(`${root} .production-route-jump`).forEach(btn=>btn.addEventListener('click',ev=>{ev.stopPropagation();state.routeEventId=btn.dataset.event;renderRouting();switchView('routing');}));
+}
+
+function routeEligibleEvents(){
+  return state.demandEvents.filter(d=>inScope(d.factory)&&d.sku&&skuLookup[d.sku]).sort((a,b)=>{
+    const rank=x=>x.source==='客戶PO'?0:x.source==='計畫庫存'?1:2;
+    return rank(a)-rank(b)||String(a.demandDate).localeCompare(String(b.demandDate));
+  });
+}
+function classifySupplyForRoute(po){
+  const name=po.item;
+  if(/IC|SoC|記憶體|裸板|被動|晶圓|Die/.test(name))return 'smt';
+  if(/包材|附件/.test(name))return 'pack';
+  if(/機箱|外殼|散熱|風扇|機構|光學/.test(name))return 'assembly';
+  return 'module';
+}
+function buildProductionRoute(event){
+  const f=buildFulfillment(event);
+  const root=f.workOrders.find(w=>w.level===0);
+  const test=f.workOrders.find(w=>w.nodeType==='route'||/測試|校正/.test(w.item));
+  const smt=f.workOrders.filter(w=>w.relationType==='smt');
+  const module=f.workOrders.filter(w=>w.relationType==='module'||(w.level>0&&/模組/.test(w.item)));
+  const internalPrep=f.workOrders.filter(w=>w.level>0&&w.relationType==='internal'&&w.id!==test?.id);
+  const posBy={smt:[],module:[],assembly:[],pack:[]};
+  f.purchaseOrders.forEach(po=>posBy[classifySupplyForRoute(po)].push(po));
+  const stages=[
+    {key:'material',name:'來料檢驗與齊套',resource:'IQC／物料超市',plant:event.factory,works:[],supplies:[...posBy.smt,...posBy.module,...posBy.assembly],note:'確認關鍵電子料、模組與機構件可於投入前齊套。'},
+    {key:'smt',name:'SMT／PCBA 製造',resource:'SMT 高速線／AOI',plant:smt[0]?.plant||event.factory,works:smt,supplies:posBy.smt,note:'主控制板印刷、貼片、回焊與電測；可由友廠 SMT 代工。'},
+    {key:'module',name:'核心模組製造',resource:'功率／控制模組線',plant:module[0]?.plant||event.factory,works:[...module,...internalPrep],supplies:posBy.module,note:'組立核心模組並載入韌體／參數版本。'},
+    {key:'assembly',name:'成品總裝',resource:'最終組裝線',plant:root?.plant||event.factory,works:root?[root]:[],supplies:[...module,...posBy.assembly],note:'將核心模組、機構與散熱件組裝為成品。'},
+    {key:'test',name:'功能測試與校正',resource:'老化／功能測試線',plant:test?.plant||event.factory,works:test?[test]:[],supplies:internalPrep,note:'執行功能、安規、校正與必要的老化測試。'},
+    {key:'pack',name:'包裝與出貨準備',resource:'包裝線／成品倉',plant:event.factory,works:[],supplies:posBy.pack,note:'完成包材、附件、標籤與出貨文件齊套。'}
+  ];
+  const routeWindows=[[-18,-13],[-12,-10],[-9,-7],[-6,-4],[-3,-2],[-1,0]];
+  stages.forEach((stage,i)=>{
+    stage.start=shiftDate(event.demandDate,routeWindows[i][0]);
+    stage.due=shiftDate(event.demandDate,routeWindows[i][1]);
+    const progressItems=[...stage.works,...stage.supplies];
+    stage.progress=progressItems.length?progressItems.reduce((s,x)=>s+x.progress,0)/progressItems.length:Math.max(0,12+i*8);
+    stage.risk=progressItems.some(x=>x.risk&&x.progress<60)||progressItems.some(x=>x.due&&x.due>stage.due);
+  });
+  return {f,stages};
+}
+function routeMiniItem(item,event,type){
+  const isWork=type==='work';
+  return `<div class="route-supply-item ${isWork&&item.kind==='委外工單'?'outsource':isWork?'work':'purchase'}"><div><span>${isWork?item.kind:'採購 PO'}</span><strong>${item.item}</strong><small>${item.id}・${isWork?plantLabel(item.plant):item.vendor}</small></div><div><strong>${formatDate(item.due)}</strong><small>${Math.round(item.progress)}%</small></div></div>`;
+}
+function renderRouting(){
+  const options=routeEligibleEvents();
+  if(!options.length){$('#routingEventSelect').innerHTML='';$('#routingKpis').innerHTML='';$('#routingContext').innerHTML='<div class="empty-state">目前範圍沒有可呈現的需求事件</div>';$('#productionSupplyRoute').innerHTML='';return;}
+  if(!options.some(x=>x.id===state.routeEventId))state.routeEventId=options[0].id;
+  const event=options.find(x=>x.id===state.routeEventId)||options[0];
+  $('#routingEventSelect').innerHTML=options.map(x=>`<option value="${x.id}">${x.id}｜${x.source}｜${x.product} ${x.sku}｜${formatDate(x.demandDate)}</option>`).join('');
+  $('#routingEventSelect').value=event.id;
+  const {f,stages}=buildProductionRoute(event);
+  const crossPlants=new Set(f.workOrders.map(w=>w.plant).filter(Boolean));
+  const risks=stages.reduce((s,x)=>s+(x.risk?1:0),0);
+  $('#routingKpis').innerHTML=[
+    ['生產途程',stages.length,'由物料齊套至包裝出貨','R','tone-blue'],
+    ['參與廠區',crossPlants.size||1,'本廠、友廠與委外單位','F','tone-green'],
+    ['委外工單',f.workOrders.filter(x=>x.kind==='委外工單').length,'友廠模組或 SMT','O','tone-yellow'],
+    ['風險途程',risks,'需要提前協調齊套','!','tone-red']
+  ].map(kpiCard).join('');
+  $('#routingContext').innerHTML=`<div class="routing-context"><div><p class="eyebrow">SELECTED FINISHED GOOD</p><h3>${event.product}｜${event.sku}</h3><p>${event.id}・${event.source}${event.soNo?`・${event.soNo}`:''}</p></div><div class="routing-context-meta"><span>生產工廠<strong>${plantLabel(event.factory)}</strong></span><span>需求數量<strong>${fmt(event.qty)} 件</strong></span><span>需求日期<strong>${formatDateFull(event.demandDate)}</strong></span><span>客戶／用途<strong>${event.customer||event.purpose||'內部需求'}</strong></span></div><div class="view-difference-note"><strong>視角差異</strong><span>供應網路與 BOM：看「從哪裡來、組成什麼」</span><span>生產供應途程：看「先做什麼、何時齊料、在哪裡做」</span></div></div>`;
+  $('#productionSupplyRoute').innerHTML=stages.map((stage,i)=>{
+    const workItems=stage.works.map(x=>routeMiniItem(x,event,'work')).join('');
+    const supplyItems=stage.supplies.map(x=>routeMiniItem(x,event,x.id.startsWith('PO-')?'purchase':'work')).join('');
+    return `<article class="route-stage ${stage.risk?'risk':''}"><div class="route-stage-axis"><span>${String(i+1).padStart(2,'0')}</span>${i<stages.length-1?'<i></i>':''}</div><div class="route-stage-card"><div class="route-stage-head"><div><span class="route-stage-kicker">${stage.start} → ${stage.due}</span><h3>${stage.name}</h3><p>${stage.note}</p></div><div class="route-stage-status">${stage.risk?'<span class="tag danger">齊套風險</span>':fulfillmentStatusTag(orderStatus(stage.progress,false,false))}<strong>${Math.round(stage.progress)}%</strong></div></div><div class="route-stage-meta"><span>執行地點<strong>${plantLabel(stage.plant)}</strong></span><span>產能資源<strong>${stage.resource}</strong></span><span>最晚完成<strong>${formatDateFull(stage.due)}</strong></span></div><div class="route-stage-content"><section><h4>承接工單</h4><div class="route-supply-list">${workItems||'<div class="route-empty">此站點以檢驗、倉儲或包裝作業為主</div>'}</div></section><section><h4>投入前必須齊套</h4><div class="route-supply-list">${supplyItems||'<div class="route-empty">無額外採購或下階工單</div>'}</div></section></div></div></article>`;
+  }).join('');
 }
 
 function demandScopeRows(){
@@ -889,9 +1013,10 @@ function setupTour(){
     {view:'events',title:'4. 需求變更事件',text:'重大變更不直接覆蓋舊版本，而是保留數量、日期、來源與原因差異。',path:['版本差異','門檻判定','接受／退回／升級']},
     {view:'simulation',title:'5. 有限與無限模擬',text:'以相同快照比較需求與實際可達量，並可切換BY產品或BY客戶。',path:['無限需求','有限可達','產品／客戶檢視']},
     {view:'network',title:'6. 供應網路與BOM',text:'展開多階BOM，查看外部供應、友廠模組、SMT代工與跨廠調撥。',path:['多階BOM','友廠協同','供給覆蓋率']},
-    {view:'production',title:'7. 產區現況',text:'比較各廠Loading，並用資源×日期時間網格查看每日正在生產的產品與料號。',path:['廠區負荷','產能資源','逐日排程']},
-    {view:'bottlenecks',title:'8. 瓶頸與責任',text:'找出產能、材料、SMT及人力瓶頸並指派責任人。',path:['風險矩陣','責任人','Commit']},
-    {view:'decision',title:'9. 決策與追蹤',text:'主管比較跨廠協同、加急與客戶取捨方案，核准後進入執行追蹤。',path:['比較方案','核准版本','Highlight']}
+    {view:'routing',title:'7. 生產供應途程',text:'從成品需求往下看生產先後、執行地點，以及每一道途程需要齊套的工單與採購PO。',path:['途程順序','站點齊套','跨廠執行']},
+    {view:'production',title:'8. 產區現況',text:'比較各廠Loading，並用資源×日期時間網格查看每日正在生產的產品與料號。',path:['廠區負荷','產能資源','逐日排程']},
+    {view:'bottlenecks',title:'9. 瓶頸與責任',text:'找出產能、材料、SMT及人力瓶頸並指派責任人。',path:['風險矩陣','責任人','Commit']},
+    {view:'decision',title:'10. 決策與追蹤',text:'主管比較跨廠協同、加急與客戶取捨方案，核准後進入執行追蹤。',path:['比較方案','核准版本','Highlight']}
   ];let idx=0;const show=()=>{const s=steps[idx];$('#tourStep').innerHTML=`<h3>${s.title}</h3><p>${s.text}</p><div class="step-path">${s.path.map(x=>`<span>${x}</span>`).join('')}</div>`;$('#tourProgress').textContent=`${idx+1} / ${steps.length}`;$('#tourPrev').disabled=idx===0;$('#tourNext').textContent=idx===steps.length-1?'完成':'下一步';switchView(s.view,true);};$('#guidedTour').addEventListener('click',()=>{idx=0;$('#overlay').classList.add('show');$('#tourModal').classList.add('show');show();});$('#tourClose').addEventListener('click',closeOverlays);$('#tourPrev').addEventListener('click',()=>{if(idx>0){idx--;show();}});$('#tourNext').addEventListener('click',()=>{if(idx<steps.length-1){idx++;show();}else closeOverlays();});
 }
 

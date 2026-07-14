@@ -26,11 +26,12 @@
         <button class="nav-item" data-view="events"><span>04</span>需求變更事件</button>
         <button class="nav-item" data-view="simulation"><span>05</span>有限／無限模擬</button>
         <button class="nav-item" data-view="network"><span>06</span>供應網路與 BOM</button>
-        <button class="nav-item" data-view="production"><span>07</span>產區現況</button>
-        <button class="nav-item" data-view="bottlenecks"><span>08</span>瓶頸分析</button>
-        <button class="nav-item" data-view="commit"><span>09</span>責任人 Commit</button>
-        <button class="nav-item" data-view="decision"><span>10</span>跨部門決策室</button>
-        <button class="nav-item" data-view="tracking"><span>11</span>執行追蹤與 Highlight</button>
+        <button class="nav-item" data-view="routing"><span>07</span>生產供應途程</button>
+        <button class="nav-item" data-view="production"><span>08</span>產區現況</button>
+        <button class="nav-item" data-view="bottlenecks"><span>09</span>瓶頸分析</button>
+        <button class="nav-item" data-view="commit"><span>10</span>責任人 Commit</button>
+        <button class="nav-item" data-view="decision"><span>11</span>跨部門決策室</button>
+        <button class="nav-item" data-view="tracking"><span>12</span>執行追蹤與 Highlight</button>
       </nav>
 
       <div class="sidebar-footer">
@@ -415,6 +416,39 @@
           </article>
         </section>
 
+
+        <!-- Production & Supply Routing -->
+        <section class="view" id="view-routing">
+          <div class="kpi-grid compact-kpis" id="routingKpis"></div>
+
+          <article class="panel routing-toolbar-panel">
+            <div class="panel-header stacked-mobile">
+              <div>
+                <p class="eyebrow">PRODUCTION & SUPPLY ROUTING</p>
+                <h2>成品生產供應途程</h2>
+                <p class="muted">此視角依製程先後呈現「何時、在哪一廠、經過哪一道途程、由哪些工單與物料供給支援」。供應網路與 BOM 著重來源拓撲與階層；本頁著重生產執行順序與站點齊套。</p>
+              </div>
+              <div class="routing-filters">
+                <label><span>需求事件／成品</span><select id="routingEventSelect"></select></label>
+                <button class="secondary-button jump-view" data-target="network">查看供應網路與 BOM</button>
+              </div>
+            </div>
+          </article>
+
+          <article class="panel routing-context-panel" id="routingContext"></article>
+
+          <article class="panel">
+            <div class="panel-header stacked-mobile">
+              <div>
+                <p class="eyebrow">ROUTE SEQUENCE & MATERIAL FEED</p>
+                <h2>生產途程與站點物料供給</h2>
+                <p class="muted">依生產先後由上往下排列。每一道途程會列出承接工單、執行工廠／資源、完成進度，以及必須在該站點前齊套的採購 PO 或下階工單。</p>
+              </div>
+              <div class="route-legend"><span><i class="route-work"></i>生產工單</span><span><i class="route-outsource"></i>委外／友廠</span><span><i class="route-purchase"></i>採購供給</span></div>
+            </div>
+            <div id="productionSupplyRoute" class="production-supply-route"></div>
+          </article>
+        </section>
 
         <!-- Production Area Status -->
         <section class="view" id="view-production">
