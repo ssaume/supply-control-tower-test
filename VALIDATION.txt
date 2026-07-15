@@ -1,9 +1,11 @@
-Build 2026.07.15-DEMAND12
-- JavaScript syntax: PASS
-- Demand import has no relationship-chain input: PASS
-- Demand types restricted to customer forecast / customer PO / internal forecast: PASS
-- Customer PO categories: external customer / internal customer / new product project / repair: PASS
-- Backend PO netting logic: PASS
-- Frozen forecast planned-stock action: PASS
-- Demand conversion graph updated: PASS
-- Shipment rows limited to customer PO internal SO and show PO category: PASS
+Build 2026.07.15-DEMAND13
+
+Static validation:
+- JavaScript syntax: PASS (node --check)
+- Destination master: 12 locations
+- Customer destination mapping: 10 customers
+- Demand Management navigation: Demand Import / Product Overview / Customer Overview
+- Product overview master rows: 21 product types / 93 finished-good SKUs
+- Customer overview master rows: 10 customers
+- Initial transaction state: empty
+- Removed broken legacy destination initializer override: PASS

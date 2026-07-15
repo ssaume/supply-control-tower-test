@@ -9,7 +9,7 @@
   <meta http-equiv="Expires" content="0" />
   <meta name="description" content="跨廠區產品、BOM、供應網路、供需變更、瓶頸、承諾與決策管理互動原型" />
   <title>供需承諾控制塔｜互動原型</title>
-  <link rel="stylesheet" href="styles-v20260715-demand12.css" />
+  <link rel="stylesheet" href="styles-v20260715-demand13.css" />
 </head>
 <body>
   <div class="app-shell">
@@ -32,6 +32,8 @@
           </button>
           <div class="nav-group-items">
             <button class="nav-item" data-view="import" title="需求匯入"><span class="nav-index">01</span><span class="nav-label">需求匯入</span></button>
+            <button class="nav-item" data-view="products" title="產品總覽"><span class="nav-index">02</span><span class="nav-label">產品總覽</span></button>
+            <button class="nav-item" data-view="customers" title="客戶總覽"><span class="nav-index">03</span><span class="nav-label">客戶總覽</span></button>
           </div>
         </section>
 
@@ -42,9 +44,9 @@
             <span class="nav-group-chevron">⌄</span>
           </button>
           <div class="nav-group-items">
-            <button class="nav-item" data-view="workorders" title="工單匯入"><span class="nav-index">02</span><span class="nav-label">工單匯入</span></button>
-            <button class="nav-item" data-view="labor" title="工時管理"><span class="nav-index">03</span><span class="nav-label">工時管理</span></button>
-            <button class="nav-item" data-view="capacity" title="產能管理"><span class="nav-index">04</span><span class="nav-label">產能管理</span></button>
+            <button class="nav-item" data-view="workorders" title="工單匯入"><span class="nav-index">04</span><span class="nav-label">工單匯入</span></button>
+            <button class="nav-item" data-view="labor" title="工時管理"><span class="nav-index">05</span><span class="nav-label">工時管理</span></button>
+            <button class="nav-item" data-view="capacity" title="產能管理"><span class="nav-index">06</span><span class="nav-label">產能管理</span></button>
           </div>
         </section>
 
@@ -55,14 +57,14 @@
             <span class="nav-group-chevron">⌄</span>
           </button>
           <div class="nav-group-items">
-            <button class="nav-item active" data-view="overview" title="總覽控制塔"><span class="nav-index">05</span><span class="nav-label">總覽控制塔</span></button>
-            <button class="nav-item" data-view="demand" title="需求總覽"><span class="nav-index">06</span><span class="nav-label">需求總覽</span></button>
-            <button class="nav-item" data-view="shipment" title="出貨總覽"><span class="nav-index">07</span><span class="nav-label">出貨總覽</span></button>
-            <button class="nav-item" data-view="simulation" title="有限／無限模擬"><span class="nav-index">08</span><span class="nav-label">有限／無限模擬</span></button>
-            <button class="nav-item" data-view="network" title="供應網路與 BOM"><span class="nav-index">09</span><span class="nav-label">供應網路與 BOM</span></button>
-            <button class="nav-item" data-view="routing" title="生產供應途程"><span class="nav-index">10</span><span class="nav-label">生產供應途程</span></button>
-            <button class="nav-item" data-view="production" title="產區現況"><span class="nav-index">11</span><span class="nav-label">產區現況</span></button>
-            <button class="nav-item" data-view="bottlenecks" title="瓶頸分析"><span class="nav-index">12</span><span class="nav-label">瓶頸分析</span></button>
+            <button class="nav-item active" data-view="overview" title="總覽控制塔"><span class="nav-index">07</span><span class="nav-label">總覽控制塔</span></button>
+            <button class="nav-item" data-view="demand" title="需求總覽"><span class="nav-index">08</span><span class="nav-label">需求總覽</span></button>
+            <button class="nav-item" data-view="shipment" title="出貨總覽"><span class="nav-index">09</span><span class="nav-label">出貨總覽</span></button>
+            <button class="nav-item" data-view="simulation" title="有限／無限模擬"><span class="nav-index">10</span><span class="nav-label">有限／無限模擬</span></button>
+            <button class="nav-item" data-view="network" title="供應網路與 BOM"><span class="nav-index">11</span><span class="nav-label">供應網路與 BOM</span></button>
+            <button class="nav-item" data-view="routing" title="生產供應途程"><span class="nav-index">12</span><span class="nav-label">生產供應途程</span></button>
+            <button class="nav-item" data-view="production" title="產區現況"><span class="nav-index">13</span><span class="nav-label">產區現況</span></button>
+            <button class="nav-item" data-view="bottlenecks" title="瓶頸分析"><span class="nav-index">14</span><span class="nav-label">瓶頸分析</span></button>
           </div>
         </section>
 
@@ -73,17 +75,17 @@
             <span class="nav-group-chevron">⌄</span>
           </button>
           <div class="nav-group-items">
-            <button class="nav-item" data-view="events" title="需求變更事件"><span class="nav-index">13</span><span class="nav-label">需求變更事件</span></button>
-            <button class="nav-item" data-view="commit" title="責任人 Commit"><span class="nav-index">14</span><span class="nav-label">責任人 Commit</span></button>
-            <button class="nav-item" data-view="decision" title="跨部門決策室"><span class="nav-index">15</span><span class="nav-label">跨部門決策室</span></button>
-            <button class="nav-item" data-view="tracking" title="執行追蹤與 Highlight"><span class="nav-index">16</span><span class="nav-label">執行追蹤與 Highlight</span></button>
+            <button class="nav-item" data-view="events" title="需求變更事件"><span class="nav-index">15</span><span class="nav-label">需求變更事件</span></button>
+            <button class="nav-item" data-view="commit" title="責任人 Commit"><span class="nav-index">16</span><span class="nav-label">責任人 Commit</span></button>
+            <button class="nav-item" data-view="decision" title="跨部門決策室"><span class="nav-index">17</span><span class="nav-label">跨部門決策室</span></button>
+            <button class="nav-item" data-view="tracking" title="執行追蹤與 Highlight"><span class="nav-index">18</span><span class="nav-label">執行追蹤與 Highlight</span></button>
           </div>
         </section>
       </nav>
 
       <div class="sidebar-footer">
         <div class="system-status"><i></i>需求資料由使用者匯入</div>
-        <div class="build-version">Build 2026.07.15-DEMAND12</div>
+        <div class="build-version">Build 2026.07.15-DEMAND13</div>
         <button id="resetDemo" class="secondary-button full">清除交易資料</button>
       </div>
     </aside>
@@ -327,6 +329,27 @@
               <span class="tag neutral" id="recentImportCount">0筆</span>
             </div>
             <div id="recentDemandImports" class="recent-import-grid"><div class="empty-state">尚未匯入需求</div></div>
+          </article>
+        </section>
+
+
+        <!-- Product Overview -->
+        <section class="view" id="view-products">
+          <div class="kpi-grid compact-kpis" id="productOverviewKpis"></div>
+          <article class="panel">
+            <div class="panel-header stacked-mobile"><div><p class="eyebrow">PRODUCT DEMAND PROFILE</p><h2>產品總覽</h2><p class="muted">以產品主檔為核心，彙整可接單料號、接單LT、生產據點、客戶預測、正式PO、內部預測、PO沖銷與計畫庫存行動。這是供應鏈規劃產品常見的產品經理與Demand Planner檢視。</p></div><button class="secondary-button jump-view" data-target="import">建立新需求</button></div>
+            <div id="productOverviewEmpty" class="empty-state">目前尚無需求交易；產品主檔與生產配置仍可供檢視。</div>
+            <div class="table-wrap"><table><thead><tr><th>產品／產品族</th><th>成品料號</th><th>接單LT</th><th>可生產工廠</th><th>客戶預測</th><th>客戶PO</th><th>內部預測</th><th>已沖銷</th><th>計畫庫存行動</th><th>LT例外</th></tr></thead><tbody id="productOverviewBody"></tbody></table></div>
+          </article>
+        </section>
+
+        <!-- Customer Overview -->
+        <section class="view" id="view-customers">
+          <div class="kpi-grid compact-kpis" id="customerOverviewKpis"></div>
+          <article class="panel">
+            <div class="panel-header stacked-mobile"><div><p class="eyebrow">CUSTOMER DEMAND PROFILE</p><h2>客戶總覽</h2><p class="muted">以客戶主檔為核心，彙整預測、正式PO、待履行訂單、產品組合、出貨地主檔與接單LT例外，供業務、客服與供應鏈計畫人員共同檢視。</p></div><button class="secondary-button jump-view" data-target="shipment">查看出貨總覽</button></div>
+            <div id="customerOverviewEmpty" class="empty-state">目前尚無客戶需求交易；客戶與出貨地主檔已載入。</div>
+            <div class="table-wrap"><table><thead><tr><th>客戶</th><th>可選出貨地</th><th>客戶預測</th><th>正式PO</th><th>待履行PO</th><th>產品組合</th><th>LT例外</th><th>最近需求日</th></tr></thead><tbody id="customerOverviewBody"></tbody></table></div>
           </article>
         </section>
 
@@ -811,6 +834,6 @@
     </div>
   </div>
 
-  <script src="app-v20260715-demand12.js"></script>
+  <script src="app-v20260715-demand13.js"></script>
 </body>
 </html>
