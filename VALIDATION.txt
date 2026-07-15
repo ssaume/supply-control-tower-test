@@ -1,6 +1,8 @@
-DEMAND14
-- Demand save no longer serializes labor/capacity masters: PASS
-- Demand save no longer redraws all modules: PASS
-- Duplicate submit guarded with aria-busy: PASS
-- UI yields before processing and shows loading state: PASS
-- JavaScript syntax: PASS
+JavaScript syntax: PASS
+Multi-level BOM explosion: True
+Planned work orders: True
+Planned purchase orders: True
+PO netting triggers full MRP rebuild: True
+Frozen forecast to planned stock: True
+Capacity uses labor/calendar and cumulative reservation: True
+Performance: idle chunking + active-view rendering + deferred master save: True

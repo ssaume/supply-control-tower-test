@@ -1,2 +1,2 @@
-Build 2026.07.15-DEMAND14
-Manual demand import performance fix.
+Build 2026.07.15-MRP15
+Multi-level MRP and async calculation build
