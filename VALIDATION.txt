@@ -1,8 +1,14 @@
-JavaScript syntax: PASS
-Multi-level BOM explosion: True
-Planned work orders: True
-Planned purchase orders: True
-PO netting triggers full MRP rebuild: True
-Frozen forecast to planned stock: True
-Capacity uses labor/calendar and cumulative reservation: True
-Performance: idle chunking + active-view rendering + deferred master save: True
+MRP16 validation
+
+PASS JavaScript syntax check
+PASS HTML references versioned MRP16 CSS/JS
+PASS demand save uses demand-only persistence before MRP
+PASS demand save yields two animation frames before MRP starts
+PASS stale fulfillment expansion is cleared before demand/approval recalculation
+PASS capacity calculation no longer calls calendarEntry for every date
+PASS MRP results are persisted during idle callbacks
+PASS post-MRP rendering is limited to the active module
+PASS LT approval uses local save and asynchronous MRP refresh
+PASS approval buttons are protected against duplicate submission
+PASS return/rework/escalation event actions use local save and local redraw
+PASS scenario approval uses local save and local page transition

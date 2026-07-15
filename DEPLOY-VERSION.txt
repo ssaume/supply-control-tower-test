@@ -1,2 +1,2 @@
-Build 2026.07.15-MRP15
-Multi-level MRP and async calculation build
+Build: 2026.07.15-MRP16
+Purpose: Non-blocking demand save and approval workflow
