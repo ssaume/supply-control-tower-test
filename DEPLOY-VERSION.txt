@@ -1,2 +1,2 @@
-Build 2026.07.15-DEMAND13
-出貨地主檔修正＋產品總覽＋客戶總覽
+Build 2026.07.15-DEMAND14
+Manual demand import performance fix.

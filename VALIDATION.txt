@@ -1,11 +1,6 @@
-Build 2026.07.15-DEMAND13
-
-Static validation:
-- JavaScript syntax: PASS (node --check)
-- Destination master: 12 locations
-- Customer destination mapping: 10 customers
-- Demand Management navigation: Demand Import / Product Overview / Customer Overview
-- Product overview master rows: 21 product types / 93 finished-good SKUs
-- Customer overview master rows: 10 customers
-- Initial transaction state: empty
-- Removed broken legacy destination initializer override: PASS
+DEMAND14
+- Demand save no longer serializes labor/capacity masters: PASS
+- Demand save no longer redraws all modules: PASS
+- Duplicate submit guarded with aria-busy: PASS
+- UI yields before processing and shows loading state: PASS
+- JavaScript syntax: PASS
