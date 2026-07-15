@@ -9,7 +9,7 @@
   <meta http-equiv="Expires" content="0" />
   <meta name="description" content="跨廠區產品、BOM、供應網路、供需變更、瓶頸、承諾與決策管理互動原型" />
   <title>供需承諾控制塔｜互動原型</title>
-  <link rel="stylesheet" href="styles-v20260714-resource11.css" />
+  <link rel="stylesheet" href="styles-v20260715-demand12.css" />
 </head>
 <body>
   <div class="app-shell">
@@ -83,7 +83,7 @@
 
       <div class="sidebar-footer">
         <div class="system-status"><i></i>需求資料由使用者匯入</div>
-        <div class="build-version">Build 2026.07.14-RESOURCE11</div>
+        <div class="build-version">Build 2026.07.15-DEMAND12</div>
         <button id="resetDemo" class="secondary-button full">清除交易資料</button>
       </div>
     </aside>
@@ -256,7 +256,7 @@
               <div>
                 <p class="eyebrow">DEMAND INTAKE</p>
                 <h2>需求匯入</h2>
-                <p class="muted">初始環境不含任何需求事件。可透過 CSV／JSON 檔案批次匯入，或以業務、客戶、出貨地等主檔下拉選單進行單筆建單。需求量可直接輸入，需求日期使用日曆選擇；客戶預測或客戶 PO 若落在產品接單 LT 內，會自動進入事件審批。</p>
+                <p class="muted">初始環境不含任何需求事件。可透過 CSV／JSON 檔案批次匯入，或以業務、客戶、出貨地等主檔下拉選單進行單筆建單。需求量可直接輸入，需求日期使用日曆選擇；需求類型僅包含客戶預測、客戶 PO、內部預測。需求關係與沖銷規則由後台計算，不要求匯入人員填寫；客戶預測或客戶 PO 若落在產品接單 LT 內，會自動進入事件審批。</p>
               </div>
               <button class="secondary-button jump-view" data-target="demand">前往需求總覽</button>
             </div>
@@ -277,8 +277,8 @@
               <div class="import-file-status" id="demandFileStatus">尚未選擇檔案</div>
               <div class="table-wrap import-preview-wrap">
                 <table class="import-preview-table">
-                  <thead><tr><th>來源</th><th>成品料號</th><th>工廠</th><th>數量</th><th>需求日期</th><th>提出者</th><th>檢核</th></tr></thead>
-                  <tbody id="demandImportPreview"><tr><td colspan="7">請先選擇檔案</td></tr></tbody>
+                  <thead><tr><th>需求類型</th><th>PO 類別</th><th>成品料號</th><th>工廠</th><th>數量</th><th>需求日期</th><th>提出者</th><th>檢核</th></tr></thead>
+                  <tbody id="demandImportPreview"><tr><td colspan="8">請先選擇檔案</td></tr></tbody>
                 </table>
               </div>
               <div class="detail-actions">
@@ -293,11 +293,17 @@
                 <span class="tag neutral">日期顆粒度：天</span>
               </div>
               <form id="manualDemandForm" class="manual-demand-form">
-                <label><span>需求來源</span><select id="manualDemandSource" required>
-                  <option value="客戶">客戶</option>
-                  <option value="內部">內部</option>
+                <label><span>需求類型</span><select id="manualDemandType" required>
+                  <option value="客戶預測">客戶預測</option>
+                  <option value="客戶PO">客戶PO</option>
+                  <option value="內部預測">內部預測</option>
                 </select></label>
-                <label><span>需求類型</span><select id="manualDemandType" required></select></label>
+                <label id="manualPoCategoryField"><span>客戶 PO 類別</span><select id="manualPoCategory">
+                  <option value="外部客戶">外部客戶</option>
+                  <option value="內部客戶">內部客戶</option>
+                  <option value="新產品專案">新產品專案</option>
+                  <option value="維修">維修</option>
+                </select></label>
                 <label class="form-span-2"><span>成品料號</span><select id="manualDemandSku" required></select></label>
                 <label class="form-span-2"><span>可生產廠區</span><select id="manualDemandFactory" required></select></label>
                 <label><span>需求數量</span><input id="manualDemandQty" type="number" min="1" step="1" value="5000" required /></label>
@@ -333,7 +339,7 @@
               <div>
                 <p class="eyebrow">DEMAND EVENT OVERVIEW</p>
                 <h2>BY 廠區需求事件</h2>
-                <p class="muted">需求依需求日期拆分成獨立事件，並保留來源鏈；點擊任一事件列，可用標準化資訊磚展開對應內製／委外工單與物料採購進度。只有客戶 PO 能轉內部 SO。</p>
+                <p class="muted">需求依需求日期拆分成獨立事件；需求轉換與沖銷關係由後台規則計算，點擊任一事件列，可用標準化資訊磚展開對應內製／委外工單與物料採購進度。只有客戶 PO 能轉內部 SO。</p>
               </div>
               <div class="demand-filters">
                 <label><span>來源類別</span><select id="demandSourceFilter">
@@ -348,6 +354,8 @@
                   <option value="待整合">待整合</option>
                   <option value="待確認">待確認</option>
                   <option value="已確認">已確認</option>
+                  <option value="已轉計畫庫存">已轉計畫庫存</option>
+                  <option value="已沖銷">已沖銷</option>
                   <option value="已轉換">已轉換</option>
                   <option value="部分消耗">部分消耗</option>
                   <option value="已被PO消耗">已被 PO 消耗</option>
@@ -369,7 +377,7 @@
               <div>
                 <p class="eyebrow">DEMAND SOURCE CONVERSION</p>
                 <h2>需求來源轉換關聯圖</h2>
-                <p class="muted">節點顯示目前範圍內的需求事件數；連線數量代表已發生的來源轉換。點擊節點可直接篩選需求來源。</p>
+                <p class="muted">節點顯示需求事件或後台計畫行動數；連線代表預測轉PO、凍結期轉計畫庫存，以及臨時PO沖銷內部預測。點擊需求節點可篩選。</p>
               </div>
               <button class="secondary-button" id="resetDemandSourceGraph">顯示全部來源</button>
             </div>
@@ -383,7 +391,7 @@
             </div>
             <div class="table-wrap demand-table-wrap">
               <table class="demand-table">
-                <thead><tr><th>需求事件／來源批次</th><th>需求日期</th><th>來源／類型</th><th>狀態</th><th>提出／版本</th><th>事件關係鏈</th><th>客戶／用途</th><th>產品／成品料號</th><th>需求量</th><th>供給覆蓋</th><th>內部 SO</th><th>操作</th></tr></thead>
+                <thead><tr><th>需求事件／來源批次</th><th>需求日期</th><th>來源／類型</th><th>狀態</th><th>提出／版本</th><th>後台轉換／沖銷</th><th>客戶／用途</th><th>產品／成品料號</th><th>需求量</th><th>供給覆蓋</th><th>內部 SO</th><th>操作</th></tr></thead>
                 <tbody id="demandEventTable"></tbody>
               </table>
             </div>
@@ -803,6 +811,6 @@
     </div>
   </div>
 
-  <script src="app-v20260714-resource11.js"></script>
+  <script src="app-v20260715-demand12.js"></script>
 </body>
 </html>

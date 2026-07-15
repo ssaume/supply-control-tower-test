@@ -1,3 +1,2 @@
-Build 2026.07.14-RESOURCE11
-Asset CSS: styles-v20260714-resource11.css
-Asset JS: app-v20260714-resource11.js
+Build 2026.07.15-DEMAND12
+Demand model: customer forecast / customer PO / internal forecast only

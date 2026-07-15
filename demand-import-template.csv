@@ -1,3 +1,4 @@
-﻿source,demandType,sku,factory,qty,demandDate,proposer,proposerDept,customer,destination
-客戶,客戶預測,UPS-100,TW01,5000,2026-08-15,林怡君,全球業務規劃,Formosa Data Center,台灣／台北
-內部,內部需求,PLC-112,TW02,1800,2026-09-10,郭佩珊,區域供應計畫,,
+demandType,poCategory,sku,factory,qty,demandDate,proposer,proposerDept,customer,destination
+客戶預測,,UPS-100,TW01,5000,2026-08-15,林怡君,全球業務規劃,Formosa Data Center,台灣／台北
+客戶PO,外部客戶,UPS-100,TW01,3000,2026-08-15,李佳蓉,訂單管理,Formosa Data Center,台灣／台北
+內部預測,,UPS-100,TW01,2000,2026-08-20,劉子瑜,S&OP規劃,,
